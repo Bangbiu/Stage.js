@@ -1,0 +1,13 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                 // Modern JS output
+    "module": "CommonJS",               // Node’s default
+    "outDir": "./dist",                 // Compiled JS goes here
+    "rootDir": "./src",                 // Source files live here
+    "esModuleInterop": true,            // allow import default from CJS
+    "strict": true,                     // enable all strict checks
+    "skipLibCheck": true,               // faster compile
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src"]
+}
