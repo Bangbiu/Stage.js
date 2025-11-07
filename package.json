@@ -1,25 +1,27 @@
 {
-  "name": "stage",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+    "name": "stage",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
     "scripts": {
-    "build": "tsc",
-    "watch": "tsc --watch",
-    "serve": "http-server ."
+        "build": "tsc",
+        "watch": "tsc --watch --project tsconfig.json",
+        "live-serve": "live-server .",
+        "http-serve": "http-server . -c-1"
     },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Bangbiu/Stage.js.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Bangbiu/Stage.js/issues"
-  },
-  "homepage": "https://github.com/Bangbiu/Stage.js#readme",
-  "devDependencies": {
-    "typescript": "^5.9.3"
-  }
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Bangbiu/Stage.js.git"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/Bangbiu/Stage.js/issues"
+    },
+    "homepage": "https://github.com/Bangbiu/Stage.js#readme",
+    "devDependencies": {
+        "live-server": "^1.2.0",
+        "typescript": "^5.9.3"
+    }
 }
