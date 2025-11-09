@@ -1,11 +1,11 @@
-//import { DATA_IDEN, SObject } from "./DataUtil";
+import { ASN_DEF, DATA_IDEN, RAW, SObject } from "./SObject.js";
 
 interface Attributive<
     TObject extends Record<PropertyKey, any>,
     TKey extends keyof TObject = keyof TObject
 > {
     readonly owner: TObject;
-    readonly name: TKey;
+    readonly key: TKey;
 }
 
 interface ValueWrapper<T> {
@@ -16,15 +16,17 @@ export default class Attribution<
     TObject extends Record<PropertyKey, any>,
     TKey extends keyof TObject = keyof TObject,
     TVal = TObject[TKey]
-> implements Attributive<TObject, TKey> {
+> extends SObject implements Attributive<TObject, TKey> {
 
     public readonly owner: TObject;
-    public readonly name: TKey;
+    public readonly key: TKey;
+    public readonly valid: boolean;
 
-    public constructor(owner: TObject, name: TKey) {
-        //super();
+    public constructor(owner: TObject, key: TKey) {
+        super();
         this.owner = owner;
-        this.name = name;
+        this.key = key;
+        this.valid = key in owner;
     }
 
     public get value(): TVal {
@@ -36,11 +38,11 @@ export default class Attribution<
     }
 
     public get(): TVal {
-        return this.owner[this.name];
+        return this.owner[this.key];
     }
     
-    public set(value: TVal): this {
-        this.owner[this.name] = value as TObject[TKey];
+    public set(value: TVal, assign: DataAssignType = ASN_DEF): this {
+        this.owner[this.key] = value as TObject[TKey];
         return this;
     }
 
@@ -49,7 +51,7 @@ export default class Attribution<
     //     return true;
     // }
 
-    public getter(...args: FnParams<TVal>): Getter<TVal> {
+    public retriever(...args: FnParams<TVal>): Getter<TVal> {
         if (this.type === "function") {
             const func = this.get() as unknown as Function;
             return func.bind(this.owner, ...args);
@@ -102,11 +104,13 @@ export default class Attribution<
         return this;
     }
 
-    doWith(other: TVal | Attribution<any, keyof any, TVal>, operation: BiFunction<TVal, TVal, TVal>): this {
+    doWith(other: TVal | Attribution<any, any, TVal>, operation: BiFunction<TVal, TVal, TVal>): this {
         if (other instanceof Attribution) {
             this.doWith(other.get(), operation);
         } else if (this.type === "object") {
             // SObject
+            console.log("obj");
+            
         } else {
             this.set(operation(this.get(), other));
         }
@@ -117,7 +121,10 @@ export default class Attribution<
         return fn(this.get());
     }
 
-    add(other: TVal | Attribution<any, keyof any, TVal>): this {
+    add(other: TVal): this;
+    add(other: object): this;
+    add(other: Attribution<any, any, TVal>): this;
+    override add(other: any): this {
         // if (cur instanceof SObject && typeof cur.add === "function") {
         //     cur.add(other);
         //     return this;
@@ -126,7 +133,10 @@ export default class Attribution<
         return this;
     }
 
-    sub(other: number | Attribution<any, keyof any, number>): this {
+    sub(other: number): this;
+    sub(other: object): this;
+    sub(other: Attribution<any, any, number>): this;
+    sub(other: any): this {
         // if (cur instanceof SObject && typeof cur.sub === "function") {
         //     cur.sub(other);
         //     return this;
@@ -136,7 +146,10 @@ export default class Attribution<
         return this;
     }
 
-    multiply(other: number | Attribution<any, keyof any, number>): this {
+    multiply(other: number): this;
+    multiply(other: object): this;
+    multiply(other: Attribution<any, any, number>): this;
+    multiply(other: any): this {
         // const cur = this.get() as any;
         // if (cur instanceof SObject && typeof cur.multiply === "function") {
         //     cur.multiply(other);
@@ -160,18 +173,16 @@ export default class Attribution<
     }
 
     // 1) Object + key → Attribution<TObj, TKey>
-    static of<TObj extends Record<PropertyKey, any>, TKey extends keyof TObj>(
+    static of<TObj extends object, TKey extends keyof TObj>(
         owner: TObj,
         prop: TKey
     ): Attribution<TObj, TKey>;
 
     // 2) Object with "value" (no key) → Attribution<TObj, "value">
-    static of<TObj extends Record<PropertyKey, any> & { value: any }>(
-        owner: TObj
-    ): Attribution<TObj, "value">;
+    static of<TObj extends object & { value: any }>(owner: TObj): Attribution<TObj, "value">;
 
     // 3) Non-object (primitive, etc.) → Attribution<ValueWrapper<T>, "value">
-    static of<T>(owner: T): Attribution<ValueWrapper<T>, "value">;
+    static of<T>(value: T): Attribution<ValueWrapper<Widen<T>>, "value"> & Widen<T>;
     
     static of(owner: any, prop?: PropertyKey): any {
         if (prop) {

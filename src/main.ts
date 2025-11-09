@@ -1,4 +1,5 @@
 import AttributionTests from "./StageModule/testers/AttributionTests.js";
+import SObjectTests from "./StageModule/testers/SObjectTests.js";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
@@ -54,3 +55,4 @@ document.fonts?.addEventListener?.("loadingdone", draw);
 draw();
 
 AttributionTests.test1();
+SObjectTests.test2();
