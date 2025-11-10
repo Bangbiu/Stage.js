@@ -56,3 +56,4 @@ draw();
 
 AttributionTests.test1();
 SObjectTests.test2();
+SObjectTests.test3();

@@ -1,7 +1,6 @@
 import Attribution from "./Attribution.js";
 
 type TraverseCallBack<T extends object> = (target: T, key: keyof T, path: KeyArrayPath<T>) => any;
-type GetAttemptCallBack = (attr: any) => any;
 type AccessAttemptCallBack = (attr: Attribution<any>) => any;
 
 export {
@@ -25,7 +24,7 @@ const DATA_UNINIT: DataAssignType = "uninit";
 const ATTR_SPLITER: string = '.';
 const RAW: unique symbol = Symbol("raw");
 
-const DoNothing = (...argArray: any[]) => { return undefined as any };
+const noop = (...argArray: any[]) => { return undefined as any };
 const TraverseLogger = <T extends object>(target: T, key: keyof T, path: KeyArrayPath<T>) => 
     console.log(path, target[key]);
     // console.log(path.join(ATTR_SPLITER) + ": ", target[key]);
@@ -116,17 +115,88 @@ class SObject implements Reproducable {
         return SObject.insertValues(this, values, assign);
     }
 
-    tryGet(path: KeyPath<this>, success?: GetAttemptCallBack, fail?: GetAttemptCallBack): any {
+    tryGet(path: KeyPath<this>, 
+        success: AttemptCallBack = noop, 
+        fail: AttemptCallBack = noop
+    ): this {
         return SObject.tryGet(this, path, success, fail);
     }
 
-    trySet(path: KeyPath<this>, value: any, assign: DataAssignType = ASN_DEF): this {
-        return SObject.trySet(this, path, value, assign);
+    trySet(path: KeyPath<this>, value: any, 
+        success: AttemptCallBack = noop, 
+        fail: AttemptCallBack = noop, 
+        assign: DataAssignType = ASN_DEF
+    ): this {
+        return SObject.trySet(this, path, value, success, fail, assign);
     }
 
-    set(value: any): this {
-        this.value = value;
-        return this;
+    tryCall(path: MethodPath<this>, argArray: any[],
+        success: AttemptCallBack = noop, 
+        fail: AttemptCallBack = noop
+    ) {
+        return SObject.tryCall(this, path, argArray, success, fail);
+    }
+
+    getFrom(path: KeyPath<this>): any {
+        return SObject.getFrom(this, path);
+    }
+
+    setIn(path: KeyPath<this>, value: any, assign: DataAssignType = ASN_DEF): boolean {
+        return SObject.setIn(this, path, value, assign);
+    }
+
+    invoke(path: MethodPath<this>, args: any[], thisArg?: Object): any {
+        return SObject.invoke(this, path, args, thisArg);
+    }
+
+    fetch(success: AttemptCallBack = noop, fail: AttemptCallBack = noop): this {
+        return this.tryGet("", success, fail);
+    }
+
+    store(value: any, 
+        success: AttemptCallBack = noop, 
+        fail: AttemptCallBack = noop, 
+        assign: DataAssignType = ASN_DEF
+    ): this {
+        return this.trySet("value", value, success, fail, assign);
+    }
+
+    get(): any {
+        return this.value;
+    }
+
+    set(value: any, assign: DataAssignType = ASN_DEF) {
+        return SObject.assign(this, "val", value, assign);
+    }
+
+    call(args: any[], thisArg: Object = this): any {
+        if (this.valueType === "function") 
+            return this.get().apply(thisArg, args);
+        return noop;
+    }
+
+    getter(path: KeyPath<this>): Getter<any> {
+        return this.attr(path).getter();
+    }
+    
+    setter(path: KeyPath<this>, value?: any): Setter<any> {
+        return this.attr(path).setter(value);
+    }
+    
+    invoker(path: MethodPath<this>, args: any[], thisArg?: Object): () => any {
+        const attr = this.attr(path);
+        const func = attr.get();
+        if (typeof func === "function") {
+            if (!thisArg) thisArg = attr.owner;
+            return (func as Function).bind(thisArg, ...args);
+        }
+        return noop;
+    }
+
+    caller(args: any[], thisArg: Object = this) {
+        if (this.valueType === "function")
+            return this.value.bind(thisArg, ...args);
+        return noop;
     }
 
     assign(key: string, value: any, type: DataAssignType = ASN_DEF): this {
@@ -149,8 +219,12 @@ class SObject implements Reproducable {
         return other;
     }
 
-    attribution(path: KeyPath<this>): Attribution<any> {
-        return SObject.getAttribution(this, path);
+    attr(path: KeyPath<this>): Attribution<any> {
+        return SObject.getAttr(this, path);
+    }
+
+    attribution(path: KeyArrayPath<this>): Attribution<any> {
+        return SObject.getAttr(this, path);
     }
     
     chain(...path: KeyArrayPath<this>): PathValue<this> {
@@ -164,32 +238,20 @@ class SObject implements Reproducable {
         return SObject.traverse(this, callback, rootPath, types);
     }
 
-    getter(path: KeyPath<this>): Getter<any> {
-        return this.access(path).retriever();
-    }
-    
-    setter(path: KeyPath<this>): Setter<any> {
-        const attr = this.access(path);
-        return attr.valid ? attr.setter() : DoNothing;
-    }
-
     subset(keys: Array<keyof this>): Partial<this> {
         return SObject.subset(this, keys);
     }
 
-    add(other: object, types?: JSDataType[]): this;
     add(other: Partial<this>, types?: JSDataType[]): this;
     add(other: any, types: JSDataType[] = JSD_DEF): this {
         return SObject.add(this, other, types) as this;
     }
 
-    sub(other: object, types?: JSDataType[]): this;
     sub(other: Partial<this>, types?: JSDataType[]): this;
     sub(other: any, types: JSDataType[] = JSD_DEF): this {
         return SObject.subtract(this, other, types) as this;
     }
 
-    multiply(other: object, types?: JSDataType[]): this;
     multiply(other: Partial<this>, types?: JSDataType[]): this;
     multiply(other: any, types: JSDataType[] = JSD_DEF): this {
         return SObject.multiply(this, other, types) as this;
@@ -201,9 +263,11 @@ class SObject implements Reproducable {
 
     printer(path?: KeyPath<this>, ...argArray: any[]): Function {
         if (path) {
-            const callee = this.attribution(path).retriever(...argArray);
             const literalPath = path instanceof Array ? path.join(ATTR_SPLITER) : path;
-            return () => (console.log(this.class + ATTR_SPLITER + literalPath + " = " + callee()));
+            const attr = this.attr(path);
+            let val = attr.get();
+            if (typeof val === "function") val = val.call(attr.owner)
+                return () => (console.log(this.class + ATTR_SPLITER + literalPath + " = " + this.attr(path).get()));
         } else {
             return () => (console.log(this.toString()));
         }
@@ -215,11 +279,19 @@ class SObject implements Reproducable {
 
     logger(path?: KeyPath<this>, ...argArray: any[]): Function {
         if (path) {
-            const callee = this.attribution(path).retriever(...argArray);
-            return ()=>(console.log(callee()));
+            return ()=>(console.log(this.getFrom(path)));
         } else {
             return ()=>(console.log(this.raw()));
         }
+    }
+
+    debug(msgr: (self: this) => any) {
+        console.log(msgr(this));
+    }
+
+    assert(assertion: Assertion<this>) {
+        console.assert(assertion(this));
+        return assertion(this);
     }
 
     toString(): string {
@@ -234,30 +306,74 @@ class SObject implements Reproducable {
         return SObject.deepEqual(this, other);
     }
 
-    static of<T extends Primitive>(target: T, assign?: DataAssignType, ..._argArray: any[]): SObject & {val: T} & T;
-    static of<T extends object>(target: T, assign?: DataAssignType, ..._argArray: any[]): SObject & T;
+    static of<T extends NotPlainObj>(properties: T, assign?: DataAssignType, ..._argArray: any[]): SObject & {val: T} & T;
+    static of<T>(target: T, assign?: DataAssignType, ..._argArray: any[]): SObject & T;
     static of(target: any, assign: DataAssignType = ASN_DEF, ..._argArray: any[]): any {
         return new SObject(target, assign);
     }
 
-    static tryGet<T extends object>(dest: T, path: KeyPath<T>, success?: GetAttemptCallBack, fail?: GetAttemptCallBack): any {
-        const gotCallBack = success ? (attr: Attribution<any, keyof any>) => (success.call(dest, attr.get())) : DoNothing as GetAttemptCallBack;
-        const failCallBack = fail ? () => (fail.call(dest, undefined)) : DoNothing as GetAttemptCallBack;
-        const attr = SObject.access(dest, path, gotCallBack, failCallBack);
-        return attr.get();
+    static setIn<T extends object>(dest: T, path: KeyPath<T>, value: any, assign: DataAssignType = DATA_IDEN): boolean {
+        return SObject.getAttr(dest, path).setIfValid(value, assign).valid;
     }
 
-    static trySet<T extends object>(dest: T, path: KeyPath<T>, value: any, assign: DataAssignType = DATA_IDEN): T {
-        const attr = SObject.access(dest, path);
-        if (attr.valid) attr.set(value, assign);
+    static getFrom<T extends object>(dest: T, path: KeyPath<T>): any {
+        return SObject.getAttr(dest, path).get();
+    }
+    
+    static invoke<T extends object>(dest: T,path: MethodPath<T>, args: any[], thisArg?: Object): any {
+        const attr = SObject.getAttr(dest, path);
+        const func = attr.get();
+        if (typeof func === "function") {
+            if (!thisArg) thisArg = attr.owner;
+            return (func as Function).apply(thisArg, args);
+        }
+        return undefined;
+    }
+
+    static tryGet<T extends object>(dest: T, path: KeyPath<T>, 
+        success: AttemptCallBack = noop, 
+        fail: AttemptCallBack = noop): T 
+    {
+        SObject.access(dest, path, 
+            attr => attr.feed(success),
+            attr => attr.feed(fail)
+        );
+        return dest;
+    }
+
+    static trySet<T extends object>(dest: T, path: KeyPath<T>, value: any, 
+        success: AttemptCallBack = noop, 
+        fail: AttemptCallBack = noop, 
+        assign: DataAssignType = DATA_IDEN): T 
+    {
+        SObject.access(dest, path, 
+            attr => { attr.set(value, assign); attr.feed(success); },
+            attr => { attr.feed(fail) }
+        );
+        return dest;
+    }
+    
+    static tryCall<T extends object>(dest: T, path: MethodPath<T>, argArray: any[],
+        success: AttemptCallBack = noop, 
+        fail: AttemptCallBack = noop
+    ): T {
+        SObject.tryGet(dest, path, 
+            (func, target, key) => {
+                if (typeof func === "function")
+                    success((func as Function).apply(target, argArray), target, key);
+                else
+                    fail(func, target, key);
+            },
+            fail
+        )
         return dest;
     }
 
     static access<T extends object>(dest: T, path: KeyPath<T>, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution<any> {
-        const attr = SObject.getAttribution(dest, path);
-        if (attr.valid) {
-            if (success) success.call(dest, attr);
-        } else if (fail) 
+        const attr = SObject.getAttr(dest, path);
+        if (attr.valid && success) 
+            success.call(dest, attr);
+        else if (fail) 
             fail.call(dest, attr);
         return attr;
     }
@@ -265,10 +381,10 @@ class SObject implements Reproducable {
     static apply<T extends object>(dest: T, source: Partial<T>, fn: BiFunction<any, any, any>, types: JSDataType[]): T;
     static apply<T extends object>(dest: T, source: any, fn: BiFunction<any, any, any>, types: JSDataType[] = JSD_DEF): T {
         const srcObj = source instanceof Object ? source : { val: source };
-        const callBack: TraverseCallBack<T> = (dest, _, path) => {
-            const srcAttr = SObject.access(srcObj as T, path);
-            if (srcAttr.valid) 
-                SObject.access(dest, path).doWith(srcAttr, fn);
+        const callBack: TraverseCallBack<T> = (_target, _key, path) => {
+            SObject.access(srcObj as T, path, 
+                attr => SObject.getAttr(dest, path).doWith(attr, fn)
+            );
             return true;
         };
         SObject.traverse(dest, callBack, [], types);
@@ -320,8 +436,6 @@ class SObject implements Reproducable {
         for (const key in values) {  
             if (key in target) {
                 SObject.assign(target, key, values[key], assign);
-            } else {
-                SObject.trySet(target, key, values[key], assign);
             }
         }
         return target;
@@ -394,28 +508,30 @@ class SObject implements Reproducable {
                 }
             }
             case "function": {
-                const func = function(...argArray: any[]) {
-                    return target(...argArray);
-                };
-                Object.assign(func, target);
-                return func as unknown as T;
+                // Clone not Needed
+                return target;
             }
             default: { return target; }
         }
     }
 
-    static getAttribution<T extends object>(target: T, path: KeyPath<T>): Attribution<any> {
-        const arrPath = path instanceof Array ? [...path] : path.split(ATTR_SPLITER);
-        return this.getAttrHelper(target, arrPath as KeyArrayPath<T>);
+    static resolveKeyPath<T extends object>(path: KeyPath<T>): KeyArrayPath<T> {
+        return path instanceof Array ? path : path.split(ATTR_SPLITER) as KeyArrayPath<T>;
     }
 
-    static getAttrHelper<T extends object>(target: T, keys: KeyArrayPath<T>): Attribution<any> {
+    static getAttr<T extends object>(target: T, path: KeyPath<T>): Attribution<any> {
+        return this.getAttribution(target, [...SObject.resolveKeyPath(path)]);
+    }
+
+    /** Modifies keys Array, Be sure to save a copy */
+    static getAttribution<T extends object>(target: T, keys: KeyArrayPath<T>): Attribution<any> {
         let curName = keys.shift() as keyof T;
-        if (keys.length <= 0) return new Attribution(target, curName) as any;
-        return SObject.getAttrHelper(target[curName] as T, keys);
+        if (keys.length <= 0 || !(curName in target)) return Attribution.of(target, curName);
+        const nextTarget = curName === "" ? target : target[curName] as T;
+        return SObject.getAttribution(nextTarget, keys);
     }
 
-    static has(target: object, keys: Array<PropertyKey>): boolean {
+    static has<T extends object>(target: T, keys: Array<PropertyKey>): boolean {
         for (let i = 0; i < keys.length; i++) {
             if (!(keys[i] in target)) return false;
         }
@@ -523,6 +639,6 @@ class SObject implements Reproducable {
 
 
 const SObjectExporter = SObject as {
-    new <T extends NotPlainObj>(properties: T, assign?: DataAssignType): SObject & {val: T} & T;
+    new <T extends NotPlainObj>(properties: T, assign?: DataAssignType): SObject & {val: Widen<T>} & T;
     new <T>(properties: T, assign?: DataAssignType): SObject & T;
 } & typeof SObject;

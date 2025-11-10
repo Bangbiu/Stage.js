@@ -18,7 +18,7 @@ type IsObject<T> =
     T extends Primitive ? false :
     T extends Function ? false :
     T extends object ? true : false;
-
+type IsFn<T> = T extends (...args: any) => any ? true : false;
 type NotPlainObj =
     Primitive
     | Array
@@ -34,13 +34,30 @@ type NotPlainObj =
 // arrays/tuples should use numeric indexes only, not "length"/methods
 type IndexKey<T> = T extends readonly any[] ? number | keyof T : keyof T;
 
-type KeyPath<T extends Object> = string | KeyArrayPath<T>
+type KeyPath<T extends Object> = string | KeyArrayPath<T>;
+type MethodPath<T extends Object> = string | MethodKeyArrayPath<T>;
 
 /** Paths that may stop at any depth (prefixes allowed). */
 type KeyArrayPath<T extends Object> =
     IsObject<T> extends true
         ? [] | { [K in IndexKey<T>]: [K, ...KeyPath<T[K]>] }[IndexKey<T>]
         : [];
+
+type MethodKeyArrayPath<T extends Object> =
+  IsObject<T> extends true
+    ? {
+        [K in IndexKey<T>]:
+          // if T[K] is a function, the path is just [K]
+          IsFn<T[K]> extends true
+            ? [K]
+            // otherwise, recurse and prepend K to every child path that ends at a function
+            : MethodKeyArrayPath<T[K]> extends infer P
+              ? P extends any[]
+                ? [K, ...P]
+                : never
+              : never
+      }[IndexKey<T>]
+    : never;
 
 /** Paths that must end on a non-object leaf. */
 type LeafKeyPath<T> =
@@ -63,6 +80,8 @@ type Widen<T> =
     T extends boolean ? boolean :
     T; // add others if needed
 
+
+// Enum
 declare type PassiveEventType = "tick" | "resize";
 declare type MouseEventType =  "mousedown"|"mouseup"|"mousemove"|"mouseenter"|"mouseleave"|"wheel";
 declare type KeyBoardEventType = "keydown"|"keypress"|"keyup";
@@ -74,6 +93,8 @@ declare type JSDataType = "string" | "number" | "bigint" | "boolean" | "symbol" 
 declare type Primitive = string | number | boolean | bigint | symbol | null | undefined;
 declare type Addable = string | number | bigint;
 
+declare type AttemptCallBack = <T extends object>(value: any, target: T, key: keyof T) => any;
+declare type Assertion<T> = (target: T) => boolean
 declare type ClipFunction = (value: number, ...argArray: any[]) => number;
 
 declare type HorizontalPosition = "left"|"centerH"|"right";

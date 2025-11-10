@@ -1,4 +1,4 @@
-import { ASN_DEF, DATA_IDEN, RAW, SObject } from "./SObject.js";
+import { ASN_DEF, SObject } from "./SObject.js";
 
 interface Attributive<
     TObject extends Record<PropertyKey, any>,
@@ -22,7 +22,7 @@ export default class Attribution<
     public readonly key: TKey;
     public readonly valid: boolean;
 
-    public constructor(owner: TObject, key: TKey) {
+    private constructor(owner: TObject, key: TKey) {
         super();
         this.owner = owner;
         this.key = key;
@@ -37,39 +37,6 @@ export default class Attribution<
         return typeof this.get();
     }
 
-    public get(): TVal {
-        return this.owner[this.key];
-    }
-    
-    public set(value: TVal, assign: DataAssignType = ASN_DEF): this {
-        this.owner[this.key] = value as TObject[TKey];
-        return this;
-    }
-
-    // set(value: TObject[TKey], assign: DataAssignType = DATA_IDEN): boolean {
-    //     SObject.assign(this.owner, this.name as string, value, assign);
-    //     return true;
-    // }
-
-    public retriever(...args: FnParams<TVal>): Getter<TVal> {
-        if (this.type === "function") {
-            const func = this.get() as unknown as Function;
-            return func.bind(this.owner, ...args);
-        } else {
-            return this.get.bind(this);
-        }
-    }
-
-    public setter(value: TVal): () => this;
-    public setter(): Setter<TVal>;
-    public setter(value?: TVal): any {
-        if (value) {
-            return () => this.set(value);
-        } else {
-            return this.set.bind(this);
-        }
-    }
-
     public isNumber(): this is Attribution<TObject, TKey, number> {
         return typeof this.get() === "number";
     }
@@ -82,19 +49,42 @@ export default class Attribution<
         return this.type === typeof other;
     }
 
-    call(...args: AppendOptional<FnParams<TVal>, Partial<TObject>>): FnReturn<TVal> {
+    public get(): TVal {
+        return this.owner[this.key];
+    }
+    
+    public set(value: TVal, assign: DataAssignType = ASN_DEF): this {
+        SObject.assign(this.owner, this.key, value, assign);
+        return this;
+    }
+
+    public setIfValid(value: TVal, assign: DataAssignType = ASN_DEF): this {
+        if (this.valid) this.set(value, assign);
+        return this;
+    }
+
+    public getter(): Getter<TVal> {
+        return this.get.bind(this);
+    }
+
+    public setter(value: TVal): () => this;
+    public setter(): Setter<TVal>;
+    public setter(value?: TVal): any {
+        if (value)
+            return this.set.bind(this, value);
+        else
+            return this.set.bind(this);
+    }
+
+    call(args: FnParams<TVal>, thisArg: Object = this.owner): FnReturn<TVal> {
         const val = this.get() as unknown;
-        if (typeof val === "function") {
-            const thisArg = args.length > val.length ? 
-                        args.pop() as TObject : this.owner;
-            return val.apply(thisArg, args);
-        }
+        if (typeof val === "function") return val.apply(thisArg, args);
         return undefined as FnReturn<TVal>;
     }
 
-    caller(...args: AppendOptional<FnParams<TVal>, Partial<TObject>>): Caller<TVal> {
+    caller(args: FnParams<TVal>, thisArg: Object = this.owner): Caller<TVal> {
         if (this.type === "function") {
-            return (() => this.call(...args)) as Caller<TVal>;
+            return (this.get() as Function).bind(thisArg, ...args);
         }
         return undefined as Caller<TVal>;
     }    
@@ -125,11 +115,10 @@ export default class Attribution<
     add(other: object): this;
     add(other: Attribution<any, any, TVal>): this;
     override add(other: any): this {
-        // if (cur instanceof SObject && typeof cur.add === "function") {
-        //     cur.add(other);
-        //     return this;
-        // }
-        this.doWith(other, (value, other) => value as any + other);
+        if (this.owner instanceof SObject) 
+            this.owner.add(other);
+        else
+            this.doWith(other, (value, other) => value as any + other);
         return this;
     }
 
@@ -137,11 +126,9 @@ export default class Attribution<
     sub(other: object): this;
     sub(other: Attribution<any, any, number>): this;
     sub(other: any): this {
-        // if (cur instanceof SObject && typeof cur.sub === "function") {
-        //     cur.sub(other);
-        //     return this;
-        // }
-        if (this.isNumber())
+        if (this.owner instanceof SObject) 
+            this.owner.sub(other);
+        else if (this.isNumber()) 
             this.doWith(other as any, (value: any, other: any) => value - other);
         return this;
     }
@@ -150,15 +137,15 @@ export default class Attribution<
     multiply(other: object): this;
     multiply(other: Attribution<any, any, number>): this;
     multiply(other: any): this {
-        // const cur = this.get() as any;
-        // if (cur instanceof SObject && typeof cur.multiply === "function") {
-        //     cur.multiply(other);
-        //     return this;
-        // }
-
-        if (this.isNumber())
+        if (this.owner instanceof SObject) 
+            this.owner.sub(other);
+        else if (this.isNumber())
             this.doWith(other as any, (value: any, other: any) => value * other);
         return this;
+    }
+
+    feed(callback: AttemptCallBack) {
+        callback(this.get(), this.owner, this.key);
     }
 
     static attributize<T>(data: T[]): Attribution<ValueWrapper<T>, "value">[];
@@ -184,8 +171,11 @@ export default class Attribution<
     // 3) Non-object (primitive, etc.) → Attribution<ValueWrapper<T>, "value">
     static of<T>(value: T): Attribution<ValueWrapper<Widen<T>>, "value"> & Widen<T>;
     
+    // 4) owner it self reference
+    // static of<T>(owner: T, prop: ""): Attribution<ValueWrapper<Widen<T>>, "value"> & Widen<T>;
+    
     static of(owner: any, prop?: PropertyKey): any {
-        if (prop) {
+        if (prop && prop !== "") {
             return new Attribution(owner, prop);
         } else {
             if (typeof owner === "object" && "value" in owner) {
