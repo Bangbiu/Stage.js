@@ -1,5 +1,4 @@
-import Attribution from "../utils/Attribution.js";
-import { SObject } from "../utils/SObject.js";
+import { Attribution, SObject } from "../utils/SObject.js";
 
 export default SObject.of({
     test1: function() {

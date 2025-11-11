@@ -1,36 +1,5 @@
 declare const APP_VERSION: string;
 
-type Opt<T> = T | undefined;
-// Function
-type BiFunction<T1, T2, R> = (arg1: T1, arg2: T2) => R;
-type UnaryFunction<T, R> = (input: T) => R;
-type FnParams<T> = T extends (...args: infer A) => any ? A : never;
-type FnReturn<T> = T extends (...args: any[]) => infer R ? R : undefined;
-type AppendOptional<T extends any[], E> = [...T, E?];
-// Array
-type ElementType<T> = T extends (infer U)[] ? U : never;
-// Class
-type ClassType<T> = new (...args: unknown[]) => T;
-type Constructor<T> = new (...args: unknown[]) => T;
-
-// Prop
-type IsObject<T> =
-    T extends Primitive ? false :
-    T extends Function ? false :
-    T extends object ? true : false;
-type IsFn<T> = T extends (...args: any) => any ? true : false;
-type NotPlainObj =
-    Primitive
-    | Array
-    | Function
-    | Date
-    | RegExp
-    | Map
-    | Set
-    | WeakMap
-    | WeakSet;
-
-
 // arrays/tuples should use numeric indexes only, not "length"/methods
 type IndexKey<T> = T extends readonly any[] ? number | keyof T : keyof T;
 
@@ -74,12 +43,15 @@ type PathValue<T, P = KeyArrayPath<T>> =
         : never
         : never;
 
-type Widen<T> =
-    T extends string ? string :
-    T extends number ? number :
-    T extends boolean ? boolean :
-    T; // add others if needed
+type ResolvedAsObject<T> =
+    T extends NonCustomObject ? ValueWrapper<T> :
+        T extends object ? T : ValueWrapper<T>;
 
+type OwnerType<R1, R2> = 
+    IsWrapper<R1> extends true ? 
+        R1 : IsWrapper<R2> extends true ? 
+            R2 : any;
+type OwnerKey<R1, R2> = Or<IsWrapper<R1>, IsWrapper<R2>> extends true ? "value" : PropertyKey
 
 // Enum
 declare type PassiveEventType = "tick" | "resize";
@@ -89,13 +61,6 @@ declare type KeyBoardEventType = "keydown"|"keypress"|"keyup";
 declare type StageIntEventType = PassiveEventType | MouseEventType | KeyBoardEventType;
 
 declare type InteractiveState = "idle"|"hover"|"pressed";
-declare type JSDataType = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function"
-declare type Primitive = string | number | boolean | bigint | symbol | null | undefined;
-declare type Addable = string | number | bigint;
-
-declare type AttemptCallBack = <T extends object>(value: any, target: T, key: keyof T) => any;
-declare type Assertion<T> = (target: T) => boolean
-declare type ClipFunction = (value: number, ...argArray: any[]) => number;
 
 declare type HorizontalPosition = "left"|"centerH"|"right";
 declare type VerticalPosition = "top"|"centerV"|"bottom";
@@ -107,6 +72,25 @@ declare type Getter<T> = () => T;
 declare type Caller<T> = T extends (...args: any[]) => infer R ? 
                             Getter<R> : undefined;
 declare type Setter<T> = (v: T) => this;
+
+declare type AttemptCallBack = <T extends object>(value: any, target: T, key: keyof T) => any;
+declare type TraverseCallBack<R extends object, TS extends JSTypeSet = DefTypeSet> = <T extends object>(
+    value: TypeOfSet<TS>,
+    propOwner: T, 
+    key: keyof T, 
+    path: KeyArrayPath<R>
+) => Voidable<boolean>;
+type InteractCallBack<R1 extends object, R2 extends object> = (
+    propOwner1: OwnerType<R1, R2>,
+    propOwner2: OwnerType<R1, R2>,
+    key: OwnerKey<R1, R2>,
+    path: KeyArrayPath<R1 & R2>,
+    root1: R1,
+    root2: R2
+) => boolean;
+
+declare type Assertion<T> = (target: T) => boolean
+declare type ClipFunction = (value: number, ...argArray: any[]) => number;
 
 declare type ColorText = keyof typeof COLORS;
 declare type ColorTuple = [number, number, number, number];
@@ -138,4 +122,12 @@ declare type Polygon = [number, number][];
 declare interface Reproducable {
     clone(): this;
     copy(other: Partial<this>): this;
+}
+
+declare interface Attributive<
+    TObject extends Record<PropertyKey, any>,
+    TKey extends keyof TObject = keyof TObject
+> {
+    readonly owner: TObject;
+    readonly key: TKey;
 }
