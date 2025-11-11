@@ -3,20 +3,59 @@ const DATA_IDEN: DataAssignType = "identical";
 const DATA_UNINIT: DataAssignType = "uninit";
 const ATTR_SPLITER: string = '.';
 const RAW: unique symbol = Symbol("raw");
+const ABORT: unique symbol = Symbol("abort");
+const JTS_ALL: JSTypeSet = ["string" , "number" , "bigint" , "boolean" , "symbol" , "undefined" , "object" , "function"]
+
+const NATIVE_CTORS = [
+    Object, Array, Map, Set, WeakMap, WeakSet,
+    Date, RegExp, Promise, Error
+] as const;
 
 const noop = () => {};
 
 let ASN_DEF: DataAssignType = DATA_CLONE;
-let JSD_DEF: JSTypeSet = ["number", "boolean", "string"] as const;
+let JTS_DEF: JSTypeSet = ["number", "boolean", "string"] as const;
 
-function func(value: number | boolean | string): any;
-function func<const T extends JSTypeSet = typeof JSD_DEF>(value: TypeOfSet<T>, types: T): any;
-function func<const T extends JSTypeSet = typeof JSD_DEF>(
-    value: TypeOfSet<T>,
-    types: T = JSD_DEF as T
-) {}
+function resolveAsCustomObject<T>(value: T): ResolvedAsObject<T> {
+    if (isCustomObject(value)) 
+        return value as ResolvedAsObject<T>;
+    return { value } as ResolvedAsObject<T>; // Wrapper
+}
 
-func(123, ["number"])
+function isObjectLike<T>(v: NonNullable<T>): boolean {
+    return typeof v === "object" || typeof v === "function";
+}
+
+function isCustomObject(value: any): value is object {
+    // Filter Out Null/Undefined
+    if (value == null) return false;
+
+    const t = typeof value;
+    // Filter Out Primitives
+    if (t !== "object") return false; // exclude primitives
+
+    const proto = Object.getPrototypeOf(value);
+    if (proto === null) return false; // e.g., Object.create(null)
+
+    
+    // Filter Out Native Object
+    const ctor = proto.constructor;
+    if (!ctor) return false;
+    if (NATIVE_CTORS.includes(ctor)) return proto === Object.prototype;
+
+    // Anything with a constructor that's not one of the native built-ins
+    // is considered a "custom class instance"
+    return true;
+}
+
+function isPOJO(value: any): value is object {
+    return (
+        Object.prototype.toString.call(value) === "[object Object]" &&
+        Object.getPrototypeOf(value) === Object.prototype
+    );
+}
+
+
 export {
     // Constants
     DATA_CLONE,
@@ -24,11 +63,17 @@ export {
     DATA_UNINIT,
     ATTR_SPLITER,
     RAW,
+    ABORT,
+    JTS_ALL,
 
     // Variables
     ASN_DEF,
-    JSD_DEF,
+    JTS_DEF,
 
     // Function
-    noop
+    noop,
+    resolveAsCustomObject,
+    isCustomObject,
+    isObjectLike,
+    isPOJO
 }

@@ -1,6 +1,6 @@
-import { Attribution, SObject } from "../utils/SObject.js";
-
-export default SObject.of({
+import { Attribution } from "../utils/SObject.js";
+import { Tester } from "./Tester.js";
+export default Tester.of({
     test1: function() {
         const o1 = { value: 4 };
         const o2 = { value: 6 };
@@ -34,9 +34,5 @@ export default SObject.of({
         Attribution.of(o1.info, "summary").set("new")
         .assert(self => self.get() === "new");
 
-    },
-
-    testAll() {
-        
     }
 });

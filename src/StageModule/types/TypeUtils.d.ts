@@ -29,6 +29,8 @@ declare type IsWrapper<T> =
         : false
     : false;
 
+declare type CustomObject<T> = T extends NonCustomObject ? never : T;
+
 // Intellisense
 declare type LoosePartialObject<T extends object> =
     Partial<T> | (Partial<T> & { [K in Exclude<PropertyKey, keyof T>]?: unknown }); // + extras
@@ -60,25 +62,34 @@ declare type Voidable<T> = T | void;
 declare type JSDataType = "string" | "number" | "bigint" | "boolean" | "symbol" | "undefined" | "object" | "function";
 declare type Primitive = string | number | boolean | bigint | symbol | null | undefined;
 declare type DefTypeSet = number | boolean | string;
-declare type NativeObject =
-    | Array<unknown>
-    | readonly unknown[]   // covers tuples and ReadonlyArray
+
+type TypedArray =
+    | Int8Array | Uint8Array | Uint8ClampedArray
+    | Int16Array | Uint16Array
+    | Int32Array | Uint32Array
+    | Float32Array | Float64Array
+    | BigInt64Array | BigUint64Array;
+
+type NativeObject =
     | Function
-    | Date
-    | RegExp
-    | Map<unknown, unknown>
-    | Set<unknown>
-    | WeakMap<object, unknown>  // WeakMap keys must be objects
-    | WeakSet<object>;          // WeakSet items must be objects
+    | Date | RegExp | Promise<any> | Error
+    | Array<any> | ReadonlyArray<any>
+    | Map<any, any> | Set<any>
+    | WeakMap<any, any> | WeakSet<any>
+    | ArrayBuffer | DataView | TypedArray
+    | URL | Blob | File | FormData;
+
 declare type Addable = string | number | bigint;
 declare type Subable = number;
 declare type Multable = number;
 declare type NonCustomObject = Primitive | NativeObject
 
+
 // Function
 declare type AnyFunction = (...args: any[]) => any;
 declare type BiFunction<T1, T2, R> = (arg1: T1, arg2: T2) => R;
 declare type UnaryFunction<T, R> = (input: T) => R;
+declare type Interaction<T> = {};
 declare type FnParams<T> = T extends (...args: infer A) => any ? A : never;
 declare type FnReturn<T> = T extends (...args: any[]) => infer R ? R : undefined;
 declare type AppendOptional<T extends any[], E> = [...T, E?];
@@ -90,4 +101,8 @@ declare type Constructor<T> = new (...args: unknown[]) => T;
 
 declare interface ValueWrapper<T> {
     value: T;
+}
+
+declare interface InteractSolution {
+
 }

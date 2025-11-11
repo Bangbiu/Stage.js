@@ -1,64 +1,44 @@
 import { 
+    ABORT,
     ASN_DEF, 
     ATTR_SPLITER, 
     DATA_CLONE, 
     DATA_IDEN, 
-    JSD_DEF, 
+    RAW, 
+
+    JTS_DEF, 
     noop, 
-    RAW 
+    
+    isCustomObject, 
+    resolveAsCustomObject
 } from "../StageCore.js";
+import WrapperProxy from "./WrapperProxy.js";
+
 type AccessAttemptCallBack = (attr: Attribution<any>) => any;
 
-const TraverseLogger = <T extends object>(value: any, _target: T, _key: keyof T, path: Array<PropertyKey>) => 
-    console.log(path, value);
+const TraverseLogger: TraverseCallBack<any, any> = (v, _t, _k, p) => 
+    console.log(p, " = ", v);
     // console.log(path.join(ATTR_SPLITER) + ": ", target[key]);
+
+const InteractLogger: InteractCallBack<any, any> = (o1, o2, k, p) =>
+    console.log(p, "=", o1[k], o2[k]);
+    
 
 class SObject implements Reproducable {
     private [RAW]: this;
     constructor( properties?: any, assign: DataAssignType = ASN_DEF ) {
         this[RAW] = this;
         if (properties) {
-            if (SObject.isCustomObject(properties)) 
+            if (isCustomObject(properties)) 
                 this.setValues(properties, assign);
             else
                 this.set(properties, assign);
         }
         SObject.COUNT++;
-        return new Proxy(this, {
-            get: (target, prop, receiver) => {
-                if (prop === RAW) return target; // expose raw
-
-                // 1) Check the dynamic object's own members first
-                const own = Reflect.get(target, prop, receiver);
-                if (own !== undefined) {
-                    return typeof own === "function" ? own.bind(receiver) : own;
-                }
-
-                // 2) Fallback to target.value (supports primitives via boxing)
-                const v = target.value;
-                if (!v) return undefined;
-
-                // If it's a primitive, box it so we can safely look up props/methods
-                const box = (typeof v === "object" || typeof v === "function") ? v : Object(v);
-
-                if (prop in box) {
-                    // Use `box` as the receiver so getters/methods see correct `this`
-                    const fromValue = Reflect.get(box, prop, box);
-                    return typeof fromValue === "function" ? fromValue.bind(box) : fromValue;
-                }
-
-                // 3) Missing
-                return undefined;
-            },
-        });
-    }
-
-    protected raw(): this {
-        return this[RAW];
     }
 
     get class(): string {
-        return this.raw().constructor.name;
+        return this.constructor.name;
     }
 
     get value(): any {
@@ -72,6 +52,11 @@ class SObject implements Reproducable {
     get valueType() {
         return "val" in this ? typeof this.val : typeof undefined;
     }
+
+    raw(): this {
+        return this[RAW];
+    }
+
     copy(source: Partial<this>): this {
         return this.updateValues(source, ASN_DEF);
     }
@@ -190,6 +175,10 @@ class SObject implements Reproducable {
         return SObject.access(this, path, success, fail);
     }
 
+    has(key: PropertyKey): boolean {
+        return key in this;
+    }
+
     hasAll(keys: Array<PropertyKey>): boolean {
         return SObject.hasAll(this, keys);
     }
@@ -210,17 +199,20 @@ class SObject implements Reproducable {
         return SObject.getAttr(this, path);
     }
 
-    traverse(callback: TraverseCallBack<this>): this;
-    traverse<const TS extends JSTypeSet>(
-        callback: TraverseCallBack<this, TS>, 
-        types: TS
+    traverse<const TS extends JSTypeSet = DefTypeSet>(
+        callback?: TraverseCallBack<this, TS>, 
+        types?: TS
     ): this;
-    traverse(callback: any = TraverseLogger, types = JSD_DEF): this {
-        return SObject.traverse(this, callback, [], types);
+    traverse(callback: any = TraverseLogger, types = JTS_DEF): this {
+        return SObject.traverse(this, types, callback);
     }
 
-    interact<T extends LoosePartial<this>>(target: T & LoosePartial<this>, callback: InteractCallBack<this, ResolvedAsObject<T>>): this {
-        return SObject.act(this, target, callback);
+    interact<T extends LoosePartial<this>>(
+        target: T & LoosePartial<this>, 
+        types: JSTypeSet = JTS_DEF, 
+        callback: InteractCallBack<this, ResolvedAsObject<T>> = InteractLogger
+    ): this {
+        return SObject.act(this, target, types, callback);
     }
 
     subset(keys: Array<keyof this>): Partial<this> {
@@ -228,17 +220,17 @@ class SObject implements Reproducable {
     }
 
     add(other: Partial<this>, types?: JSTypeSet): this;
-    add(other: any, types: JSTypeSet = JSD_DEF): this {
+    add(other: any, types: JSTypeSet = JTS_DEF): this {
         return SObject.add(this, other, types) as this;
     }
 
     sub(other: Partial<this>, types?: JSTypeSet): this;
-    sub(other: any, types: JSTypeSet = JSD_DEF): this {
+    sub(other: any, types: JSTypeSet = JTS_DEF): this {
         return SObject.subtract(this, other, types) as this;
     }
 
     multiply(other: Partial<this>, types?: JSTypeSet): this;
-    multiply(other: any, types: JSTypeSet = JSD_DEF): this {
+    multiply(other: any, types: JSTypeSet = JTS_DEF): this {
         return SObject.multiply(this, other, types) as this;
     }
 
@@ -270,12 +262,12 @@ class SObject implements Reproducable {
                 () => console.log(attr.call(args)) : 
                 () => console.log(attr.get());
         } else {
-            return () => (console.log(this.raw()));
+            return () => console.log(this.raw());
         }
     }
 
-    debug(msgr: (self: this) => any = self => self.raw()) {
-        console.log(msgr(this));
+    debug(callback: (self: this) => any = self => self.raw()) {
+        console.log(callback(this));
     }
 
     assert(assertion: Assertion<this>) {
@@ -295,10 +287,11 @@ class SObject implements Reproducable {
         return SObject.deepEqual(this, other);
     }
 
-    static of<T extends NonCustomObject>(properties: T, assign?: DataAssignType, ..._args: any[]): SObject & {val: T} & T;
-    static of<T>(target: T, assign?: DataAssignType, ..._args: any[]): SObject & T;
+    static of<T extends NonCustomObject>(properties: T, assign?: DataAssignType, ..._args: any[]): SObject & {value: Widen<T>} & Widen<T>;
+    static of<T>(target: CustomObject<T>, assign?: DataAssignType, ..._args: any[]): SObject & T;
     static of(target: any, assign: DataAssignType = ASN_DEF, ..._args: any[]): any {
-        return new SObject(target, assign);
+        const raw = new SObject(target, assign);
+        return isCustomObject(target) ? raw : WrapperProxy(raw);
     }
 
     static setIn<T extends object>(dest: T, path: KeyPath<T>, value: any, assign: DataAssignType = DATA_IDEN): boolean {
@@ -359,7 +352,7 @@ class SObject implements Reproducable {
     }
 
     static access<T extends object>(dest: T, path: KeyPath<T>, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution<any> {
-        const attr = SObject.getAttr(dest, path);
+        const attr = SObject.getAttr(dest, path);       
         if (attr.valid && success) 
             success.call(dest, attr);
         else if (fail) 
@@ -369,62 +362,59 @@ class SObject implements Reproducable {
 
     static add<T extends object>(dest: T, source: Addable): T;
     static add<T extends object>(dest: T, source: Partial<T>, types: JSTypeSet): T;
-    static add<T extends object>(dest: T, source: any, types: JSTypeSet = JSD_DEF): T {
+    static add<T extends object>(dest: T, source: any, types: JSTypeSet = JTS_DEF): T {
         return this.apply(dest, source, (v1, v2) => v1 + v2, types);
     }
 
-    static subtract<T extends object>(dest: T, source: Partial<T>, types: JSTypeSet = JSD_DEF): T {
+    static subtract<T extends object>(dest: T, source: Partial<T>, types: JSTypeSet = JTS_DEF): T {
         return this.apply(dest, source, (v1, v2) => v1 - v2, types);
     }
 
-    static multiply<T extends object>(dest: T, source: Partial<T>, types: JSTypeSet = JSD_DEF): T {
+    static multiply<T extends object>(dest: T, source: Partial<T>, types: JSTypeSet = JTS_DEF): T {
         return this.apply(dest, source, (v1, v2) => v1 * v2, types);
     }
 
-    static traverse<T extends object>(
-        target: T, callback: TraverseCallBack<T>
-    ): T;
-    static traverse<T extends object>(
-        target: T, callback: TraverseCallBack<T>, 
-        rootPath: KeyArrayPath<T>, 
-    ): T;
     static traverse<T extends object, const TS extends JSTypeSet>(
-        target: T, callback: TraverseCallBack<T, TS>, 
-        rootPath: KeyArrayPath<T>, 
-        types: JSTypeSet
-    ): T; 
-    static traverse<T extends object, const TS extends JSTypeSet>(
-        target: T, callback: TraverseCallBack<T, TS>, 
-        rootPath: KeyArrayPath<T> = [], 
-        types: JSTypeSet = JSD_DEF
+        target: T, 
+        types: JSTypeSet = JTS_DEF, 
+        callback: TraverseCallBack<T, TS> = TraverseLogger, 
+        rootPath: KeyArrayPath<T> = []
     ): T {
         for (const key in target) {
             const value = target[key];
             const curPath = [...rootPath, key] as unknown as KeyArrayPath<T>;
-            if (SObject.isCustomObject(value)) 
-                SObject.traverse(value as T, callback, curPath, types);
-            if (types.includes(typeof value)) {          
-                if (callback(value as TypeOfSet<TS>, target, key, curPath) === false) return target;
+            if (types.includes(typeof value)) {
+                const ret = callback(value as TypeOfSet<TS>, target, key, curPath);
+                if (ret === false) 
+                    continue;
+                else if (ret === ABORT)
+                    return target;
             }
+            if (isCustomObject(value)) 
+                SObject.traverse(value as T, types, callback, curPath);
         }
         return target;
     } 
 
-    static act<T1, T2 extends LoosePartial<T1>>
-        (target1: T1, target2: T2 | LoosePartial<T1>, 
-        callback: InteractCallBack<ResolvedAsObject<T1>, ResolvedAsObject<T2>>,
+    static act<T1, T2 extends LoosePartial<T1>>(
+        target1: T1, 
+        target2: T2 | LoosePartial<T1>,
+        types: JSTypeSet = JTS_DEF, 
+        callback: InteractCallBack<ResolvedAsObject<T1>, ResolvedAsObject<T2>> = InteractLogger,
         rootPath: KeyArrayPath<ResolvedAsObject<T1> & ResolvedAsObject<T2>> = []
     ): ResolvedAsObject<T1> {
-        const t1 = SObject.resolveAsCustomObject(target1) as object;
-        const t2 = SObject.resolveAsCustomObject(target2) as object;
-        return SObject.interact(t1, t2, callback, rootPath);
+        const t1 = resolveAsCustomObject(target1) as object;
+        const t2 = resolveAsCustomObject(target2) as object;
+        return SObject.interact(t1, t2, types, callback, rootPath);
     }
 
     static interact<
         T1 extends object, T2 extends LoosePartialObject<T1>,
         R1 extends object = T1, R2 extends object = T2>
     (
-        target1: T1, target2: T2 | LoosePartialObject<T1>, 
+        target1: T1, 
+        target2: T2 | LoosePartialObject<T1>, 
+        types: JSTypeSet = JTS_DEF, 
         callback: InteractCallBack<R1, R2>,
         rootPath: KeyArrayPath<R1 & R2> = [],
         root1: R1 = target1 as unknown as R1, 
@@ -435,25 +425,29 @@ class SObject implements Reproducable {
                 const value1 = target1[key] as object;
                 const value2 = target2[key] as object;
                 const curPath = [...rootPath, key] as unknown as KeyArrayPath<R1 & R2>;
-                if (SObject.isCustomObject(value1) && SObject.isCustomObject(value2)) 
-                    SObject.interact(value1, value2 as object, callback, curPath, root1, root2);       
-                else if (callback(target1 as any, target2 as any, key as OwnerKey<R1, R2>, curPath, root1, root2) === false) 
-                    return root1;
+                if (types.includes(typeof value1)) {
+                    const ret = callback(target1 as any, target2 as any, key as OwnerKey<R1, R2>, curPath, root1, root2);
+                    if (ret === ABORT) return root1;
+                    else if (ret === false) continue;
+                }
+                if (isCustomObject(value1) && isCustomObject(value2)) 
+                    SObject.interact(value1, value2 as object, types, callback, curPath, root1, root2);       
+
             }
         }
         return root1;
     }
 
     static apply<T extends object>(dest: T, source: Partial<T>, fn: BiFunction<any, any, any>, types: JSTypeSet): T;
-    static apply<T extends object>(dest: T, source: any, fn: BiFunction<any, any, any>, types: JSTypeSet = JSD_DEF): T {
-        const srcObj = source instanceof Object ? source : { val: source };
+    static apply<T extends object>(dest: T, source: any, fn: BiFunction<any, any, any>, types: JSTypeSet = JTS_DEF): T {
+        const srcObj = source instanceof Object ? source : { value: source };
         const callBack: TraverseCallBack<T> = (_value, _propOwner, _key, path) => {
             SObject.access(srcObj as T, path, 
                 attr => SObject.getAttr(dest, path).doWith(attr, fn)
             );
             return true;
         };
-        SObject.traverse(dest, callBack, [], types);
+        SObject.traverse(dest, types, callBack);
         return dest;
     }
 
@@ -568,6 +562,7 @@ class SObject implements Reproducable {
         if (keys.length <= 0 || !SObject.hasKey(target, curName)) {
             return Attribution.of(target, curName);
         }
+        // Skip Empty Key
         const nextTarget = curName === "" ? target : target[curName] as T;
         return SObject.getAttribution(nextTarget, keys);
     }
@@ -679,30 +674,13 @@ class SObject implements Reproducable {
         return false;
     }
 
-    static resolveAsCustomObject<T>(value: T): ResolvedAsObject<T> {
-        if (SObject.isCustomObject(value)) 
-            return value as ResolvedAsObject<T>;
-        return { value } as ResolvedAsObject<T>;
-    }
-
-    static isCustomObject(value: any): value is object {
-        return value instanceof SObject || SObject.isPOJO(value);
-    }
-
-    static isPOJO(value: any): value is object {
-          return (
-            Object.prototype.toString.call(value) === "[object Object]" &&
-            Object.getPrototypeOf(value) === Object.prototype
-        );
-    }
-
     private static COUNT: number = 0;
 }
 
 
 const SObjectExporter = SObject as {
-    new <T extends NonCustomObject>(properties: T, assign?: DataAssignType): SObject & {val: Widen<T>} & T;
-    new <T>(properties: T, assign?: DataAssignType): SObject & T;
+    new <T extends NonCustomObject>(properties: T, assign?: DataAssignType): SObject & {val: Widen<T>};
+    new <T>(properties: CustomObject<T>, assign?: DataAssignType): SObject & T;
 } & typeof SObject;
 
 class Attribution<
@@ -859,7 +837,7 @@ class Attribution<
     ): Attribution<TObj, TKey>;
 
     // 2) Object with "value" (no key) → Attribution<TObj, "value">
-    static of<TObj extends object & { value: any }>(owner: TObj): Attribution<TObj, "value">;
+    static of<VT, TObj extends ValueWrapper<VT>>(owner: TObj): Attribution<TObj, "value">;
 
     // 3) Non-object (primitive, etc.) → Attribution<ValueWrapper<T>, "value">
     static of<T>(value: T): Attribution<ValueWrapper<Widen<T>>, "value"> & Widen<T>;

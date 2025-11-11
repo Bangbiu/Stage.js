@@ -7,7 +7,7 @@ type KeyPath<T extends Object> = string | KeyArrayPath<T>;
 type MethodPath<T extends Object> = string | MethodKeyArrayPath<T>;
 
 /** Paths that may stop at any depth (prefixes allowed). */
-type KeyArrayPath<T extends Object> =
+type KeyArrayPath<T extends Object> = readonly
     IsObject<T> extends true
         ? [] | { [K in IndexKey<T>]: [K, ...KeyPath<T[K]>] }[IndexKey<T>]
         : [];
@@ -53,6 +53,8 @@ type OwnerType<R1, R2> =
             R2 : any;
 type OwnerKey<R1, R2> = Or<IsWrapper<R1>, IsWrapper<R2>> extends true ? "value" : PropertyKey
 
+type OpsReturn = Voidable<boolean | unique symbol>
+
 // Enum
 declare type PassiveEventType = "tick" | "resize";
 declare type MouseEventType =  "mousedown"|"mouseup"|"mousemove"|"mouseenter"|"mouseleave"|"wheel";
@@ -79,7 +81,7 @@ declare type TraverseCallBack<R extends object, TS extends JSTypeSet = DefTypeSe
     propOwner: T, 
     key: keyof T, 
     path: KeyArrayPath<R>
-) => Voidable<boolean>;
+) => OpsReturn;
 type InteractCallBack<R1 extends object, R2 extends object> = (
     propOwner1: OwnerType<R1, R2>,
     propOwner2: OwnerType<R1, R2>,
@@ -87,7 +89,7 @@ type InteractCallBack<R1 extends object, R2 extends object> = (
     path: KeyArrayPath<R1 & R2>,
     root1: R1,
     root2: R2
-) => boolean;
+) => OpsReturn;
 
 declare type Assertion<T> = (target: T) => boolean
 declare type ClipFunction = (value: number, ...argArray: any[]) => number;

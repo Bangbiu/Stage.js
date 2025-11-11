@@ -1,3 +1,4 @@
+import AttributionTests from "./StageModule/testers/AttributionTests.js";
 import SObjectTests from "./StageModule/testers/SObjectTests.js";
 import { Tester } from "./StageModule/testers/Tester.js";
 import { Attribution, SObject } from "./StageModule/utils/SObject.js";
@@ -60,3 +61,4 @@ document.fonts?.addEventListener?.("loadingdone", draw);
 draw();
 
 SObjectTests.testAll();
+AttributionTests.testAll();
