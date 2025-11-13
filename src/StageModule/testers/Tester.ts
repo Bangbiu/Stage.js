@@ -7,7 +7,7 @@ class Tester extends SObject {
     }
 
     testAll() {
-        this.traverse(test => test(), ["function"])
+        this.traverse(test => test.getAsType("function", f => f()));
     }
     
     static of<T extends Record<PropertyKey, Function>>(properties: T): Tester & T {

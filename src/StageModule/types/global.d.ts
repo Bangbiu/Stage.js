@@ -1,13 +1,13 @@
 declare const APP_VERSION: string;
 
 // arrays/tuples should use numeric indexes only, not "length"/methods
-type IndexKey<T> = T extends readonly any[] ? number | keyof T : keyof T;
+type IndexKey<T> = Extract<keyof T, string | number>;;
 
 type KeyPath<T extends Object> = string | KeyArrayPath<T>;
 type MethodPath<T extends Object> = string | MethodKeyArrayPath<T>;
 
 /** Paths that may stop at any depth (prefixes allowed). */
-type KeyArrayPath<T extends Object> = readonly
+type KeyArrayPath<T extends object> = readonly
     IsObject<T> extends true
         ? [] | { [K in IndexKey<T>]: [K, ...KeyPath<T[K]>] }[IndexKey<T>]
         : [];
@@ -44,14 +44,8 @@ type PathValue<T, P = KeyArrayPath<T>> =
         : never;
 
 type ResolvedAsObject<T> =
-    T extends NonCustomObject ? ValueWrapper<T> :
-        T extends object ? T : ValueWrapper<T>;
-
-type OwnerType<R1, R2> = 
-    IsWrapper<R1> extends true ? 
-        R1 : IsWrapper<R2> extends true ? 
-            R2 : any;
-type OwnerKey<R1, R2> = Or<IsWrapper<R1>, IsWrapper<R2>> extends true ? "value" : PropertyKey
+  T extends object? (IsCustomObject<T> extends true ? T : ValueWrapper<Widen<T>>)
+    : ValueWrapper<Widen<T>>;
 
 type OpsReturn = Voidable<boolean | unique symbol>
 
@@ -76,20 +70,6 @@ declare type Caller<T> = T extends (...args: any[]) => infer R ?
 declare type Setter<T> = (v: T) => this;
 
 declare type AttemptCallBack = <T extends object>(value: any, target: T, key: keyof T) => any;
-declare type TraverseCallBack<R extends object, TS extends JSTypeSet = DefTypeSet> = <T extends object>(
-    value: TypeOfSet<TS>,
-    propOwner: T, 
-    key: keyof T, 
-    path: KeyArrayPath<R>
-) => OpsReturn;
-type InteractCallBack<R1 extends object, R2 extends object> = (
-    propOwner1: OwnerType<R1, R2>,
-    propOwner2: OwnerType<R1, R2>,
-    key: OwnerKey<R1, R2>,
-    path: KeyArrayPath<R1 & R2>,
-    root1: R1,
-    root2: R2
-) => OpsReturn;
 
 declare type Assertion<T> = (target: T) => boolean
 declare type ClipFunction = (value: number, ...argArray: any[]) => number;

@@ -92,7 +92,7 @@ export default Tester.of({
         a1.fetch(value => console.assert(value === 4));
         
         const a2 = SObject.of([10, 20, "ok", new Date()]);
-        a2.tryGet("0", value => console.assert(value === 10));
+        a2.tryGet([0], value => console.assert(value === 10));
         a2.trySet(["length"], 0);
         a2.tryGet(["value"], arr => console.assert(arr.length === 0))
 
@@ -126,14 +126,30 @@ export default Tester.of({
     },
 
     testTraverse() {
+        let concated: any[] = [];
         SObject.of(complexObject)
-        .traverse((value, owner, key, path) => {
-            //console.log(value);
-            if (typeof value === "object") return false;
-        }, JTS_ALL)
+        .traverse(attr => {
+            attr.getAsInstance(Map, map => console.assert(map.size === 1));
+            if (attr.instanceOf(Array)) {
+                concated = concated.concat(attr.get());
+            }
+        });
+        console.assert(concated.length === 7);
     },
 
     testInteract() {
+        const o1 = SObject.of({count: 2, text: "o1 text"});
+        const o2 = SObject.of({count: 3, text: "o2 Text"});
+        SObject.act(o1, o2, (a1, a2) => {
+            a1.set(a1.get() + a2.get());
+            return true;
+        });
+        o1.assert(self => self.count === 5);
+        SObject.act("123", "45" ,(o1, o2) => {
+            console.assert(o1.get() + o2.get() === "12345");
+            return true;
+        });
+
         const o3 = SObject.of({
             a: {b: 3},
             c: {
@@ -146,12 +162,14 @@ export default Tester.of({
             value: 10
         });
         
-        o3.interact(10, ["number"], (o1, o2, key, path) => {
-            console.log(path);
-            o1[key] += o2[key];
-            console.log(o1);
-            return true;
-        });
+        SObject.of(3).interact(2, (a1, a2) => {
+            a1.set(a1.get() + a2.get());
+        }).assert(self => self.value === 5);
+        
+        
+        o3.interact(10, (a1, a2) => {
+            a1.set(a1.get() * a2.get());
+        }).assert(self => self.value === 100);
     },
     
     test1: function() {
@@ -173,7 +191,7 @@ export default Tester.of({
         cloned.traverse((value) => {
             // if(value instanceof Map)
             //     console.log(value);
-        }, ["number", "boolean", "string", "object"]);
+        });
     },
 
     test2: function() {
@@ -202,21 +220,5 @@ export default Tester.of({
         const a2 = SObject.of(complexObject);
         a2.store(2)
         .assert(self => self.get() === 2);
-    },
-
-    test4: function() {
-        const o1 = SObject.of({count: 2, text: "o1 text"});
-        const o2 = SObject.of({count: 3, text: "o2 Text"});
-        SObject.act(o1, o2, ["number", "string"], (o1, o2, key) => {
-            const v1 = o1[key]
-            const v2 = o2[key];
-            o1[key] = v1 + v2;
-            return true;
-        });
-        o1.assert(self => self.count === 5);
-        SObject.act("123", "45", ["number"] ,(o1, o2) => {
-            console.assert(o1.value + o2.value === "12345");
-            return true;
-        });
     }
 });

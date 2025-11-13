@@ -1,10 +1,7 @@
-import { isObjectLike, RAW } from "../StageCore.js";
-
-
-const dummy = () => {};
+import { DUMMY, isObjectLike, RAW } from "../StageCore.js";
 
 export default function WrapperProxy<T extends ValueWrapper<any>>(obj: T): T {
-    return new Proxy(dummy as unknown as T, {
+    return new Proxy(DUMMY as unknown as T, {
         get: (_target, prop, receiver) => {
             if (prop === RAW) return obj; // expose raw
 
@@ -82,6 +79,20 @@ export default function WrapperProxy<T extends ValueWrapper<any>>(obj: T): T {
                 throw new TypeError("This Object is not Constructible");
             }
             return Reflect.construct(v, argArray, newTarget);
+        },
+
+        ownKeys(_target) {
+            return Reflect.ownKeys(obj);
+        },
+
+        getOwnPropertyDescriptor(_target, key) {
+            // MUST return a descriptor so the key becomes enumerable
+            return {
+                configurable: true,
+                enumerable: true,
+                writable: true,
+                value: (obj as any)[key]
+            };
         }
     });
 }

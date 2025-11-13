@@ -5,6 +5,7 @@ const ATTR_SPLITER: string = '.';
 const RAW: unique symbol = Symbol("raw");
 const ABORT: unique symbol = Symbol("abort");
 const JTS_ALL: JSTypeSet = ["string" , "number" , "bigint" , "boolean" , "symbol" , "undefined" , "object" , "function"]
+const DUMMY = () => {};
 
 const NATIVE_CTORS = [
     Object, Array, Map, Set, WeakMap, WeakSet,
@@ -31,6 +32,9 @@ function isCustomObject(value: any): value is object {
     if (value == null) return false;
 
     const t = typeof value;
+
+    if (t === "function" && RAW in value) return true;
+    
     // Filter Out Primitives
     if (t !== "object") return false; // exclude primitives
 
@@ -55,6 +59,20 @@ function isPOJO(value: any): value is object {
     );
 }
 
+function getAllKeys(obj: any): Array<PropertyKey> {
+  const keys: PropertyKey[] = [];
+  let current = obj;
+
+  while (current !== null) {
+    const own = Reflect.ownKeys(current);   // string + symbol keys
+    for (const k of own) {
+      if (!keys.includes(k)) keys.push(k);  // dedupe
+    }
+    current = Object.getPrototypeOf(current);
+  }
+
+  return keys;
+}
 
 export {
     // Constants
@@ -65,6 +83,7 @@ export {
     RAW,
     ABORT,
     JTS_ALL,
+    DUMMY,
 
     // Variables
     ASN_DEF,
@@ -75,5 +94,6 @@ export {
     resolveAsCustomObject,
     isCustomObject,
     isObjectLike,
-    isPOJO
+    isPOJO,
+    getAllKeys
 }
