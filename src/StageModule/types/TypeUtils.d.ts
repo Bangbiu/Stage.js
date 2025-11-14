@@ -71,8 +71,8 @@ declare type LoosePartialObject<T extends object> =
 declare type LoosePartial<T> =
     IsCustomObject<T> extends true ? LoosePartialObject<T> : T;
 
-
 declare type BoxedWrapper<T> = ValueWrapper<Widen<T>> & Box<T>;
+declare type MonoObject<TKey, TVal> = { [K in TKey]: TVal };
 
 declare type ValueOfKeys<K extends JSTypeSet> = JSTypeMap[K[number]];
 declare type JSTypeSet = readonly (keyof JSTypeMap)[];
@@ -121,7 +121,6 @@ declare type Multable = number;
 declare type AnyFunction = (...args: any[]) => any;
 declare type BiFunction<T1, T2, R> = (arg1: T1, arg2: T2) => R;
 declare type UnaryFunction<T, R> = (input: T) => R;
-declare type Interaction<T> = {};
 declare type FnParams<T> = T extends (...args: infer A) => any ? A : never;
 declare type FnReturn<T> = T extends (...args: any[]) => infer R ? R : undefined;
 declare type AppendOptional<T extends any[], E> = [...T, E?];
@@ -143,8 +142,4 @@ declare type Constructor<T> = new (...args: unknown[]) => T;
 
 declare interface ValueWrapper<T> {
     value: T;
-}
-
-declare interface InteractSolution {
-
 }

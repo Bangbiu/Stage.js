@@ -1,4 +1,4 @@
-import { Attribution } from "../utils/SObject.js";
+import { Attribution, SObject } from "../utils/SObject.js";
 import { Tester } from "./Tester.js";
 export default Tester.of({
     test1: function() {
@@ -17,13 +17,13 @@ export default Tester.of({
         const a5 = Attribution.of("sample");
 
         console.assert(a1.add(1).get() === 5); 
-        console.assert(a2.doWith(a1, (v, o) => v * o).get() === 30);
+        console.assert(a2.do(a1, (a, v, o) => a.set(v + o)).get() === 11);
         console.assert(a3.calc(v => v * v) === 100);
         console.assert(a4.call([3, 4], {base: 50}) === 57);
         o4.base = 0;
         console.assert(a4.caller([9, 6])() === 15);
-        console.assert(a5.do(input => input + ": tested").get() === "sample: tested");
-        console.assert(Attribution.of(8).multiply(3).add(-5).sub(6).get() === 13);
+        //console.assert(a5.do(input => input + ": tested").get() === "sample: tested");
+        console.assert(Attribution.of(8).mult(3).add(-5).sub(6).get() === 13);
     },
 
     test2: function() {

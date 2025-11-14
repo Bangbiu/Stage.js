@@ -3,7 +3,7 @@ declare const APP_VERSION: string;
 // arrays/tuples should use numeric indexes only, not "length"/methods
 type IndexKey<T> = Extract<keyof T, string | number>;;
 
-type KeyPath<T extends Object> = string | KeyArrayPath<T>;
+type KeyPath<T extends Object> = string | keyof T | KeyArrayPath<T>;
 type MethodPath<T extends Object> = string | MethodKeyArrayPath<T>;
 
 /** Paths that may stop at any depth (prefixes allowed). */
@@ -47,7 +47,7 @@ type ResolvedAsObject<T> =
   T extends object? (IsCustomObject<T> extends true ? T : ValueWrapper<Widen<T>>)
     : ValueWrapper<Widen<T>>;
 
-type OpsReturn = Voidable<boolean | unique symbol>
+type OpsReturn = Voidable<boolean | unique symbol | this>
 
 // Enum
 declare type PassiveEventType = "tick" | "resize";
@@ -102,7 +102,7 @@ declare type Polygon = [number, number][];
 // Interfaces
 
 declare interface Reproducable {
-    clone(): this;
+    clone(): typeof this;
     copy(other: Partial<this>): this;
 }
 
