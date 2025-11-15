@@ -16,25 +16,23 @@ import {
 } from "../StageCore.js";
 import WrapperProxy from "./WrapperProxy.js";
 
-type CallBackAttr<R1 extends object, R2 extends object> = 
-    Or<IsWrapper<R1>, IsWrapper<R2>> extends true ? Attribution<R1> : Attribution<any>;
-    
-type AccessAttemptCallBack = (attr: Attribution<any>) => any;
+
+type AccessAttemptCallBack = (attr: Attribution) => any;
 type TraverseCallBack<R extends object> = (
-    attr: IsWrapper<R> extends true ? Attribution<R> : Attribution<any>,
+    attr: Attribution,
     path: KeyArrayPath<R>,
     root: R
 ) => OpsReturn;
 type InteractCallBack<R1 extends object, R2 extends object> = (
-    attr1: CallBackAttr<R1, R2>,
-    attr2: CallBackAttr<R2, R1>,
+    attr1: Attribution,
+    attr2: Attribution,
     path: KeyArrayPath<R1 & R2>,
     root1: R1,
     root2: R2
 ) => OpsReturn;
 
-type AttrDoCallback<A extends Attribution<any>, C, V> 
-    = (attr: A, curValue: C, otherValue: V) => OpsReturn;
+type AttrDoCallback<A extends Attribution> 
+    = (attr: A, curValue: any, otherValue: any) => OpsReturn;
 
 const TraverseLogger: TraverseCallBack<any> = (attr, path) => 
     console.log(path, " = ", attr.get());
@@ -79,7 +77,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         SObject.COUNT++;
     }
 
-    get class(): string {
+    get className(): string {
         return this.constructor.name;
     }
 
@@ -115,9 +113,8 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.insertValues(this, values, assign);
     }
 
-    tryGet(path: KeyPath<this>, 
-        success: AttemptCallBack = noop, 
-        fail: AttemptCallBack = noop
+    //tryGet(path: KeyPath<this>, success: AttemptCallBack, fail: AttemptCallBack): this;
+    tryGet(path: KeyPath<this>, success: AttemptCallBack = noop, fail: AttemptCallBack = noop
     ): this {
         return SObject.tryGet(this, path, success, fail);
     }
@@ -137,19 +134,25 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.tryCall(this, path, args, success, fail);
     }
 
-    getFrom(path: KeyPath<this>): any {
+    getFrom(path: keyof this): any;
+    getFrom(path: KeyPath<this>): any;
+    getFrom(path: any): any {
         return SObject.getFrom(this, path);
     }
 
-    extract(...path: KeyArrayPath<this>): PathValue<this> {
+    extract(...path: KeyArrayPath<this>): any {
         return this.getFrom(path);
     }
 
-    setIn(path: KeyPath<this>, value: any, assign: DataAssignType = ASN_DEF): boolean {
+    setIn(path: keyof this, value: any, assign?: DataAssignType): boolean;
+    setIn(path: KeyPath<this>, value: any, assign?: DataAssignType): boolean;
+    setIn(path: any, value: any, assign: DataAssignType = ASN_DEF): boolean {
         return SObject.setIn(this, path, value, assign);
     }
 
-    invoke(path: MethodPath<this>, args: any[], thisArg?: Object): any {
+    invoke(path: MethodKeys<this>, args: any[], thisArg?: Object): any;
+    invoke(path: MethodPath<this>, args: any[], thisArg?: Object): any;
+    invoke(path: any, args: any[], thisArg?: Object): any {
         return SObject.invoke(this, path, args, thisArg);
     }
 
@@ -179,15 +182,21 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return noop;
     }
 
-    getter(path: KeyPath<this>): Getter<any> {
+    getter(path: keyof this): Getter<any>
+    getter(path: KeyPath<this>): Getter<any>;
+    getter(path: any): Getter<any> {
         return this.attr(path).getter();
     }
     
-    setter(path: KeyPath<this>, value?: any): Setter<any> {
+    setter(path: keyof this, value?: any): Setter<any>;
+    setter(path: KeyPath<this>, value?: any): Setter<any>;
+    setter(path: any, value?: any): Setter<any> {
         return this.attr(path).setter(value);
     }
     
-    invoker(path: MethodPath<this>, args: any[], thisArg?: Object): () => any {
+    invoker(path: MethodKeys<this>, args: any[], thisArg?: Object): () => any
+    invoker(path: MethodPath<this>, args: any[], thisArg?: Object): () => any
+    invoker(path: any, args: any[], thisArg?: Object): () => any {
         const attr = this.attr(path);
         const func = attr.get();
         if (typeof func === "function") {
@@ -203,11 +212,15 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return noop;
     }
 
-    assign(key: string, value: any, type: DataAssignType = ASN_DEF): this {
+    assign(key: keyof this, value: any, type?: DataAssignType): this;
+    assign(key: string, value: any, type?: DataAssignType): this;
+    assign(key: any, value: any, type: DataAssignType = ASN_DEF): this {
         return SObject.assign(this, key, value, type);
     }
 
-    access(path: KeyPath<this>, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution<any, keyof any> {
+    access(path: keyof this, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution;
+    access(path: KeyPath<this>, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution;
+    access(path: any, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution {
         return SObject.access(this, path, success, fail);
     }
 
@@ -227,11 +240,13 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return other;
     }
 
-    attr(path: KeyPath<this>): Attribution<any> {
+    attr(path: keyof this): Attribution
+    attr(path: KeyPath<this>): Attribution;
+    attr(path: any): Attribution {
         return SObject.getAttr(this, path);
     }
 
-    attribution(path: KeyArrayPath<this>): Attribution<any> {
+    attribution(path: KeyArrayPath<this>): Attribution {
         return SObject.getAttr(this, path);
     }
 
@@ -265,15 +280,19 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.mult(this, other) as this;
     }
 
-    print(path?: KeyPath<this>, ...args: any[]): void {
+    print(path?: keyof this, ...args: any[]): void;
+    print(path?: KeyPath<this>, ...args: any[]): void;
+    print(path?: any, ...args: any[]): void {
         this.printer(path, ...args)();
     }
 
-    printer(path?: KeyPath<this>, ...args: any[]): Function {
+    printer(path?: keyof this, ...args: any[]): Function
+    printer(path?: KeyPath<this>, ...args: any[]): Function
+    printer(path?: any, ...args: any[]): Function {
         if (path !== undefined) {
             const joinedPath = path instanceof Array ? 
                 path.join(ATTR_SPLITER) : path as unknown as Array<string>;
-            const header = this.class + ATTR_SPLITER + joinedPath;
+            const header = this.className + ATTR_SPLITER + joinedPath;
             const attr = this.attr(path);
             return attr.type === "function" ? 
                 () => console.log(`${header}(${args}) = ${attr.call(args)}`) : 
@@ -283,11 +302,15 @@ class SObject implements Reproducable, ValueWrapper<any> {
         }
     }
 
-    msg(path?: KeyPath<this>, ...args: any[]): void {
+    msg(path?: keyof this, ...args: any[]): void;
+    msg(path?: KeyPath<this>, ...args: any[]): void;
+    msg(path?: any, ...args: any[]): void {
         this.msgr(path, ...args)();
     }
 
-    msgr(path?: KeyPath<this>, ...args: any[]): () => void {
+    msgr(path?: keyof this, ...args: any[]): Function
+    msgr(path?: KeyPath<this>, ...args: any[]): Function
+    msgr(path?: any, ...args: any[]): Function {
         if (path !== undefined) {
             const attr = this.attr(path);
             return attr.type === "function" ? 
@@ -308,7 +331,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
     toString(): string {
-        return `[${this.class} = ${this.value}]`;
+        return `[${this.className} = ${this.value}]`;
     }
 
     equals<T extends object>(other: T): boolean {
@@ -326,15 +349,21 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return isCustomObject(target) ? raw : WrapperProxy(raw);
     }
 
-    static setIn<T extends object>(dest: T, path: KeyPath<T>, value: any, assign: DataAssignType = DATA_IDEN): boolean {
+    static setIn<T extends object>(dest: T, path: keyof T, value: any, assign?: DataAssignType): boolean
+    static setIn<T extends object>(dest: T, path: KeyPath<T>, value: any, assign?: DataAssignType): boolean;
+    static setIn<T extends object>(dest: T, path: any, value: any, assign: DataAssignType = DATA_IDEN): boolean {
         return SObject.getAttr(dest, path).setIfValid(value, assign).valid;
     }
 
-    static getFrom<T extends object>(dest: T, path: KeyPath<T>): any {
+    static getFrom<T extends object>(dest: T, path: keyof T): any;
+    static getFrom<T extends object>(dest: T, path: KeyPath<T>): any;
+    static getFrom<T extends object>(dest: T, path: any): any {
         return SObject.getAttr(dest, path).get();
     }
-    
-    static invoke<T extends object>(dest: T,path: MethodPath<T>, args: any[], thisArg?: Object): any {
+
+    static invoke<T extends object>(dest: T,path: MethodKeys<T>, args: any[], thisArg?: Object): any;
+    static invoke<T extends object>(dest: T,path: MethodPath<T>, args: any[], thisArg?: Object): any;
+    static invoke<T extends object>(dest: T,path: any, args: any[], thisArg?: Object): any {
         const attr = SObject.getAttr(dest, path);
         const func = attr.get();
         if (typeof func === "function") {
@@ -344,9 +373,9 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return undefined;
     }
 
-    static tryGet<T extends object>(dest: T, path: KeyPath<T>, 
-        success: AttemptCallBack = noop, 
-        fail: AttemptCallBack = noop): T 
+    static tryGet<T extends object>(dest: T, path: keyof T, success?: AttemptCallBack, fail?: AttemptCallBack): T;
+    static tryGet<T extends object>(dest: T, path: KeyPath<T>, success?: AttemptCallBack, fail?: AttemptCallBack): T;
+    static tryGet<T extends object>(dest: T, path: any, success: AttemptCallBack = noop, fail: AttemptCallBack = noop): T 
     {
         SObject.access(dest, path, 
             attr => attr.feed(success),
@@ -355,7 +384,15 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return dest;
     }
 
+    static trySet<T extends object>(dest: T, path: keyof T, value: any, 
+        success?: AttemptCallBack, 
+        fail?: AttemptCallBack, 
+        assign?: DataAssignType): T 
     static trySet<T extends object>(dest: T, path: KeyPath<T>, value: any, 
+        success?: AttemptCallBack, 
+        fail?: AttemptCallBack, 
+        assign?: DataAssignType): T 
+    static trySet<T extends object>(dest: T, path: any, value: any, 
         success: AttemptCallBack = noop, 
         fail: AttemptCallBack = noop, 
         assign: DataAssignType = DATA_IDEN): T 
@@ -366,8 +403,16 @@ class SObject implements Reproducable, ValueWrapper<any> {
         );
         return dest;
     }
-    
+
+    static tryCall<T extends object>(dest: T, path: MethodKeys<T>, args: any[],
+        success?: AttemptCallBack, 
+        fail?: AttemptCallBack
+    ): T
     static tryCall<T extends object>(dest: T, path: MethodPath<T>, args: any[],
+        success?: AttemptCallBack, 
+        fail?: AttemptCallBack
+    ): T
+    static tryCall<T extends object>(dest: T, path: any, args: any[],
         success: AttemptCallBack = noop, 
         fail: AttemptCallBack = noop
     ): T {
@@ -383,7 +428,9 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return dest;
     }
 
-    static access<T extends object>(dest: T, path: KeyPath<T>, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution<any> {
+    static access<T extends object>(dest: T, path: keyof T, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution
+    static access<T extends object>(dest: T, path: KeyPath<T>, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution;
+    static access<T extends object>(dest: T, path: any, success?: AccessAttemptCallBack, fail?: AccessAttemptCallBack): Attribution {
         const attr = SObject.getAttr(dest, path);       
         if (attr.valid && success) 
             success.call(dest, attr);
@@ -422,8 +469,8 @@ class SObject implements Reproducable, ValueWrapper<any> {
     ): T {
         for (const key in target) {
             const attr = Attribution.of(target, key);
-            const curPath = [...rootPath, key] as unknown as KeyArrayPath<T>;
-            const ret = callback(attr as any, curPath, root);
+            const curPath = [...rootPath, key] as any;
+            const ret = callback(attr, curPath, root);
             if (ret === ABORT) return target;
             else if (ret === false) continue;
             const value = attr.get();
@@ -460,7 +507,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
                 const attr1 = Attribution.of(target1, key);
                 const attr2 = Attribution.of(target2, key);
                 const curPath = [...rootPath, key] as any;
-                const ret = callback(attr1 as any, attr2 as any, curPath, root1, root2);
+                const ret = callback(attr1, attr2, curPath, root1, root2);
                 if (ret === ABORT) return root1;
                 else if (ret === false) continue;
                 const value1 = attr1.get();
@@ -480,7 +527,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     static setValues<T extends object>(target: T, values: LoosePartialObject<T>, assign: DataAssignType = ASN_DEF): T {
         for (const key in values) {
-            SObject.assign(target, key, (values as any)[key] as any, assign);
+            SObject.assign(target, key, (values as any)[key], assign);
         }
         return target;
     }
@@ -503,7 +550,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
 
-    static assign<T>(target: T, key: keyof T | string, value: any, type: DataAssignType = ASN_DEF): T {
+    static assign<T>(target: T, key: keyof T | PropertyKey, value: any, type: DataAssignType = ASN_DEF): T {
         switch (type) {
             case DATA_CLONE: {
                 (target as any)[key] = SObject.clone(value);
@@ -577,12 +624,14 @@ class SObject implements Reproducable, ValueWrapper<any> {
             return [path] as unknown as KeyArrayPath<T>;
     }
 
-    static getAttr<T extends object>(target: T, path: KeyPath<T>): Attribution<any> {
+    static getAttr<T extends object>(target: T, path: keyof T): Attribution
+    static getAttr<T extends object>(target: T, path: KeyPath<T>): Attribution
+    static getAttr<T extends object>(target: T, path: any): Attribution {
         return this.getAttribution(target, [...SObject.resolveKeyPath(path)]);
     }
 
     /** Modifies keys Array, Be sure to save a copy */
-    static getAttribution<T extends object>(target: T, keys: KeyArrayPath<T>): Attribution<any> {
+    static getAttribution<T extends object>(target: T, keys: KeyArrayPath<T>): Attribution {
         const curName = keys.shift() as keyof T;
         if (keys.length <= 0 || !SObject.hasKey(target, curName)) {
             return Attribution.of(target, curName);
@@ -708,17 +757,13 @@ const SObjectExporter = SObject as {
     new <T>(properties: CustomObject<T>, assign?: DataAssignType): SObject & T;
 } & typeof SObject;
 
-class Attribution<
-    TObject extends Record<PropertyKey, any>,
-    TKey extends keyof TObject = keyof TObject,
-    TVal = TObject[TKey]
-> extends SObject implements Attributive<TObject, TKey> {
+class Attribution extends SObject {
 
-    public readonly owner: TObject;
-    public readonly key: TKey;
+    public readonly owner: Record<PropertyKey, any>;
+    public readonly key: PropertyKey;
     public readonly valid: boolean;
 
-    private constructor(owner: TObject, key: TKey) {
+    private constructor(owner: object, key: PropertyKey) {
         super();
         this.owner = owner;
         this.key = key;
@@ -729,46 +774,41 @@ class Attribution<
         return typeof this.get();
     }
 
-    public typeOf<T extends JSDataType>(dataType: T): 
-        this is Attribution<TObject, TKey, JSTypeMap[T]> 
+    public typeOf<T extends JSDataType>(dataType: T): boolean
     {
         return this.type === dataType;
     }
 
-    public instanceOf<T extends object>(ctor: Constructor<T>):
-        this is Attribution<TObject, TKey, T>
-    {
+    public instanceOf<T extends object>(ctor: Constructor<T>): boolean {
         const v = this.get();
         return v != null && v instanceof ctor;
     }
 
-    public isNumber(): this is Attribution<TObject, TKey, number> {
+    public isNumber(): boolean {
         return this.typeOf("number");
     }
 
-    public isString(): this is Attribution<TObject, TKey, string> {
+    public isString(): boolean {
         return this.typeOf("string");
     }
 
-    public sameTypeWith<T>(other: T): this is Attribution<TObject, TKey, T>  {
+    public sameTypeWith<T>(other: T): boolean  {
         return this.type === typeof other;
     }
 
-    public shareTypeOf<T>(other: Attribution<any, any, T>, dataType: JSDataType): 
-        this is Attribution<TObject, TKey, T> 
+    public shareTypeOf<T>(other: Attribution, dataType: JSDataType): boolean
     {
         return this.type === dataType && other.type === dataType;
     }
 
     public shareTypeSet<const T extends JSTypeSet>
-        (other: Attribution<any, any, TypeOfSet<T>>, typeSet: T): 
-        this is Attribution<TObject, TKey, TypeOfSet<T>> 
+        (other: Attribution, typeSet: T): boolean
     {
         return typeSet.includes(this.type) && typeSet.includes(other.type);
     }
 
-    public get(): TVal {
-        return this.owner[this.key];
+    public get(): any {
+        return (this.owner as any)[this.key];
     }
 
     public getAsType<T extends JSDataType>(dataType: T, callback: (val: JSTypeMap[T]) => any) {
@@ -787,45 +827,45 @@ class Attribution<
         }
     }
     
-    public set(value: TVal, assign: DataAssignType = ASN_DEF): this {
+    public set(value: any, assign: DataAssignType = ASN_DEF): this {
         SObject.assign(this.owner, this.key, value, assign);
         return this;
     }
 
-    public setIfValid(value: TVal, assign: DataAssignType = ASN_DEF): this {
+    public setIfValid(value: any, assign: DataAssignType = ASN_DEF): this {
         if (this.valid) this.set(value, assign);
         return this;
     }
 
-    public getter(): Getter<TVal> {
+    public getter(): Getter<any> {
         return this.get.bind(this);
     }
 
-    public setter(value: TVal): () => this;
-    public setter(): Setter<TVal>;
-    public setter(value?: TVal): any {
+    public setter(value: any): () => this;
+    public setter(): Setter<any>;
+    public setter(value?: any): any {
         if (value)
             return this.set.bind(this, value);
         else
             return this.set.bind(this);
     }
 
-    call(args: FnParams<TVal> = [] as any, thisArg: Object = this.owner): FnReturn<TVal> {
+    call(args: any[] = [], thisArg: Object = this.owner): any {
         if (this.typeOf("function")) 
             return (this.get() as Function).apply(thisArg, args);
-        return undefined as FnReturn<TVal>;
+        return undefined as FnReturn<any>;
     }
 
-    caller(args: FnParams<TVal>, thisArg: Object = this.owner): Caller<TVal> {
+    caller(args: any[] = [], thisArg: Object = this.owner): any {
         if (this.type === "function") {
             return (this.get() as Function).bind(thisArg, ...args);
         }
-        return undefined as Caller<TVal>;
+        return undefined as Caller<any>;
     }
 
     do<T>(
-        target: T | Attribution<any, any, T> | TVal, 
-        callback: AttrDoCallback<this, TVal, T | TVal>
+        target: T | Attribution,
+        callback: AttrDoCallback<this>
     ): this {
         const otherValue = target instanceof Attribution ? target.get() : target;
         const curValue = this.get();
@@ -834,13 +874,10 @@ class Attribution<
         return this;
     }
 
-    calc(fn: UnaryFunction<TVal, TVal>): TVal {
+    calc(fn: UnaryFunction<any, any>): any {
         return fn(this.get());
     }
 
-    add(other: TVal): this;
-    add(other: object): this;
-    add(other: Attribution<any, any, TVal>): this;
     add(other: any): this {
         this.do(other, (attr, curValue, otherValue) => {
             if (typeof curValue === "object")
@@ -852,9 +889,6 @@ class Attribution<
         return this;
     }
 
-    sub(other: number): this;
-    sub(other: object): this;
-    sub(other: Attribution<any, any, number>): this;
     sub(other: any): this {
         this.do(other, (attr, curValue, otherValue) => {
             if (typeof curValue === "object")
@@ -866,9 +900,6 @@ class Attribution<
         return this;
     }
 
-    mult(other: number): this;
-    mult(other: object): this;
-    mult(other: Attribution<any, any, number>): this;
     mult(other: any): this {
         this.do(other, (attr, curValue, otherValue) => {
             if (typeof curValue === "object")
@@ -884,9 +915,8 @@ class Attribution<
         callback(this.get(), this.owner, this.key);
     }
 
-    static attributize<T>(data: T[]): Attribution<ValueWrapper<T>, "value">[];
-    static attributize(data: any[]): Attribution<Object, any>[] {
-        const attrs: Attribution<Object, any>[] = [];
+    static attributize(data: any[]): Attribution[] {
+        const attrs: Attribution[] = [];
         data.forEach((elem) => {
             if (elem instanceof Attribution) {
                 attrs.push(elem);
@@ -899,13 +929,13 @@ class Attribution<
     static of<TObj extends object, TKey extends keyof TObj>(
         owner: TObj,
         prop: TKey
-    ): Attribution<TObj, TKey>;
+    ): Attribution;
 
     // 2) Object with "value" (no key) → Attribution<TObj, "value">
-    static of<VT, TObj extends ValueWrapper<VT>>(owner: TObj): Attribution<TObj, "value">;
+    static of<VT, TObj extends ValueWrapper<VT>>(owner: TObj): Attribution;
 
     // 3) Non-object (primitive, etc.) → Attribution<ValueWrapper<T>, "value">
-    static of<T>(value: T): Attribution<ValueWrapper<Widen<T>>, "value"> & Widen<T>;
+    static of<T>(value: T): Attribution & Widen<T>;
     
     // 4) owner it self reference
     // static of<T>(owner: T, prop: ""): Attribution<ValueWrapper<Widen<T>>, "value"> & Widen<T>;
@@ -927,5 +957,6 @@ class Attribution<
 
 export {
     SObjectExporter as SObject,
+    SObject as SObjectBase,
     Attribution
 }

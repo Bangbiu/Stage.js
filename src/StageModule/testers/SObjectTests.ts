@@ -225,9 +225,8 @@ export default Tester.of({
 
     testMetaAndRaw: function() {
         const so = SObject.of({ a: 1, b: 2 });
-
         // instance getters: class, valueType, keys, raw, toString
-        so.assert(self => self.class === "SObject");
+        so.assert(self => self.className === "SObject");
         so.assert(self => self.valueType === "undefined");
 
         const ks = (so as any).keys as string[];

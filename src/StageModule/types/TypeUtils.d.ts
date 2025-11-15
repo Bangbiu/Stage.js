@@ -80,6 +80,24 @@ declare type DefTypeSet = ["number", "boolean", "string"];
 declare type TypeOfSet<K extends JSTypeSet> = JSTypeMap[K[number]];
 declare type TypeOf<K extends JSDataType> = JSTypeMap[K];
 // Enum
+
+// Allowable depth levels (tweak as needed)
+type Depth = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+
+// Simple decrement table for Depth
+type PrevDepth = {
+  0: 0;
+  1: 0;
+  2: 1;
+  3: 2;
+  4: 3;
+  5: 4;
+  6: 5;
+  7: 6;
+};
+
+type Dec<D extends Depth> = PrevDepth[D];
+
 declare type JSTypeMap = {
     string: string;
     number: number;

@@ -1,6 +1,5 @@
 import { SObject } from "../utils/SObject.js";
 
-
 class Tester extends SObject {
     private constructor(properties: Record<PropertyKey, Function>) {    
         super(properties);

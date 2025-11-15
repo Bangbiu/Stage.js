@@ -1,32 +1,50 @@
 declare const APP_VERSION: string;
 
-// arrays/tuples should use numeric indexes only, not "length"/methods
-type IndexKey<T> = Extract<keyof T, string | number>;;
+type MethodKeys<T> = {
+    [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never
+}[keyof T];
 
-type KeyPath<T extends Object> = string | keyof T | KeyArrayPath<T>;
-type MethodPath<T extends Object> = string | MethodKeyArrayPath<T>;
+type KeyPath<T extends Object> = string | Array<PropertyKey> | KeyArrayPath<T>;
+type MethodPath<T extends Object> = string | Array<PropertyKey> | MethodKeyArrayPath<T>;
+
+// arrays/tuples should use numeric indexes only, not "length"/methods
+type IndexKey<T> = Extract<keyof T, PropertyKey>;;
 
 /** Paths that may stop at any depth (prefixes allowed). */
-type KeyArrayPath<T extends object> = readonly
-    IsObject<T> extends true
-        ? [] | { [K in IndexKey<T>]: [K, ...KeyPath<T[K]>] }[IndexKey<T>]
-        : [];
+// depth-limited KeyArrayPath
+type KeyArrayPath<T, D extends Depth = 5> =
+  // if we've hit depth 0, fall back to a generic PropertyKey[]
+  D extends 0
+    ? Array<PropertyKey>
+    : isFn<T> extends true
+      // functions: your original base case
+      ? Array<PropertyKey>
+      : T extends object
+        ? {
+            [K in IndexKey<T>]:
+              [K, ...KeyArrayPath<T[K], Dec<D>>]
+          }[IndexKey<T>]
+        // non-objects: your original base case
+        : Array<PropertyKey>;
 
-type MethodKeyArrayPath<T extends Object> =
-  IsObject<T> extends true
-    ? {
-        [K in IndexKey<T>]:
-          // if T[K] is a function, the path is just [K]
-          IsFn<T[K]> extends true
-            ? [K]
-            // otherwise, recurse and prepend K to every child path that ends at a function
-            : MethodKeyArrayPath<T[K]> extends infer P
-              ? P extends any[]
-                ? [K, ...P]
+type MethodKeyArrayPath<T, D extends Depth = 5> = // default max depth = 5
+  // stop when depth is 0
+  D extends 0
+    ? never
+    : T extends object
+      ? {
+          [K in IndexKey<T>]:
+            // if T[K] is a function, the path is just [K]
+            IsFn<T[K]> extends true
+              ? [K]
+              // otherwise, recurse and prepend K to every child path that ends at a function
+              : MethodKeyArrayPath<T[K], Dec<D>> extends infer P
+                ? P extends any[]
+                  ? [K, ...P]
+                  : never
                 : never
-              : never
-      }[IndexKey<T>]
-    : never;
+        }[IndexKey<T>]
+      : never;
 
 /** Paths that must end on a non-object leaf. */
 type LeafKeyPath<T> =
