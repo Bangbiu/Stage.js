@@ -97,8 +97,12 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return this.updateValues(source, ASN_DEF);
     }
 
-    clone(): typeof this {
+    clone(): this {
         return new SObject(this) as typeof this;
+    }
+
+    class(): typeof this {
+        return this.constructor as unknown as typeof this;
     }
 
     setValues( values: LoosePartialObject<this> = {}, assign: DataAssignType = ASN_DEF ): this {
@@ -224,6 +228,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.access(this, path, success, fail);
     }
 
+    has(key: keyof this): boolean;
     has(key: PropertyKey): boolean {
         return key in this;
     }
@@ -261,7 +266,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.act(this, target, callback as any);
     }
 
-    subset(keys: Array<keyof this>): Partial<this> {
+    subset(keys: Array<keyof this>): SObject & Partial<this> {
         return SObject.subset(this, keys);
     }
 
@@ -640,11 +645,11 @@ class SObject implements Reproducable, ValueWrapper<any> {
         const nextTarget = curName === "" ? target : target[curName] as T;
         return SObject.getAttribution(nextTarget, keys);
     }
-
-    static subset<T extends object>(target: T, keys: Array<keyof T>): Partial<T> {
-        const result = new SObject({}) as unknown as Partial<T>;
+    
+    static subset<T extends object>(target: T, keys: Array<keyof T>): SObject & Partial<T> {
+        const result = new SObject({}) as SObject & Partial<T>;
         keys.forEach(key => {
-            if (key in target) result[key] = target[key];
+            if (key in target) result.assign(key, target[key], DATA_IDEN);
         });
         return result;
     }
@@ -779,7 +784,7 @@ class Attribution extends SObject {
         return this.type === dataType;
     }
 
-    public instanceOf<T extends object>(ctor: Constructor<T>): boolean {
+    public objectFrom<T extends object>(ctor: Constructor<T>): boolean {
         const v = this.get();
         return v != null && v instanceof ctor;
     }

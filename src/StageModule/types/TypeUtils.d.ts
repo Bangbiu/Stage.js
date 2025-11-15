@@ -65,6 +65,9 @@ declare type IsWrapper<T> =
 declare type CustomObject<T> = IsCustomObject<T> extends true ? T : never;
 declare type NonCustomObject<T> = IsCustomObject<T> extends true ? never : T;
 // Intellisense
+declare type PartialNonUndefined<T> = {
+    [K in keyof T]?: Exclude<T[K], undefined>;
+};
 declare type LoosePartialObject<T extends object> =
     Partial<RelaxValueOf<T>> | (Partial<RelaxValueOf<T>> & { [K in Exclude<PropertyKey, keyof T>]?: unknown });
 

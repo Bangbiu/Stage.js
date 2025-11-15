@@ -130,7 +130,7 @@ export default Tester.of({
         SObject.of(complexObject)
         .traverse(attr => {
             attr.getAsInstance(Map, map => console.assert(map.size === 1));
-            if (attr.instanceOf(Array)) {
+            if (attr.objectFrom(Array)) {
                 concated = concated.concat(attr.get());
             }
         });
@@ -176,7 +176,7 @@ export default Tester.of({
         .assert(self => self.a === 1 && self.b === 42);
 
         SObject.of(2).set(10).add(3).add(10)
-        .assert(self => self.value === 23);
+        .assert(self => self.value.toString() === "23");
     },
     
     test1: function() {
@@ -189,12 +189,12 @@ export default Tester.of({
         const cloned = SObject.of(complexObject).clone();
         cloned.attr(["coordinates", 0]).assert(self => self.get() === 32.7157);
         cloned.attr("coordinates.1").get()
-        // console.log();
-        // console.log(cloned.subset(["profile"]));
-        // console.log(cloned.extract("profile", "social", "github"));
-        cloned.traverse((value) => {
-            // if(value instanceof Map)
-            //     console.log(value);
+        console.assert(cloned.subset(["profile"]).has("score") === false);
+        console.assert(cloned.extract("profile", "social", "github") === "https://github.com/Bangbiu");
+        cloned.traverse((attr) => {
+            const value = attr.get();
+            if(value instanceof Map)
+                console.assert(value.size === 1);
         });
     },
 
