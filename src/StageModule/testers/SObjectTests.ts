@@ -1,4 +1,3 @@
-import { ABORT, JTS_ALL } from "../StageCore.js";
 import { SObject } from "../utils/SObject.js";
 import { Tester } from "./Tester.js";
 
@@ -177,14 +176,22 @@ export default Tester.of({
 
         SObject.of(2).set(10).add(3).add(10)
         .assert(self => self.value.toString() === "23");
+
+        SObject.of({ pos: {x: 2, y:3 }, vel: {x: 10, y: 6} }).add({
+            pos: {x: 3, y: 2},
+            vel: {x: 1, y: 10}
+        }).assert(self => self.deepEqual({
+            pos: {x: 5, y: 5}, vel: {x: 11, y: 16}
+        }));
+        
     },
     
-    test1: function() {
-        SObject.of(123).assert(self => self.value === 123);
+    testClone: function() {
+        SObject.of(123).assert(self => self.clone().value === 123);
 
         const same = {a: 2, b: 11, c: 123};
         SObject.of({a: 2, b: 11, c: 123})
-        .assert(self => self.equals(same));
+        .assert(self => self.clone().equals(same));
 
         const cloned = SObject.of(complexObject).clone();
         cloned.attr(["coordinates", 0]).assert(self => self.get() === 32.7157);
@@ -198,7 +205,7 @@ export default Tester.of({
         });
     },
 
-    test2: function() {
+    testAccessSetFetchSetIn: function() {
         const a1 = new SObject(1);
         a1.access([], attr => attr.set(5))
         a1.assert(self => self.value === 5);

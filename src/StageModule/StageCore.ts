@@ -5,7 +5,7 @@ const ATTR_SPLITER: string = '.';
 const RAW: unique symbol = Symbol("raw");
 const ABORT: unique symbol = Symbol("abort");
 const JTS_ALL: JSTypeSet = ["string" , "number" , "bigint" , "boolean" , "symbol" , "undefined" , "object" , "function"]
-const JST_ADDABLE: JSTypeSet = ["string", "number", "object", "bigint"];
+const JST_ADDABLE: JSTypeSet = ["string", "number", "bigint"];
 const JST_SUBABLE: JSTypeSet = ["number"];
 const JST_MULTABLE: JSTypeSet = ["number"];
 const DUMMY = () => {};

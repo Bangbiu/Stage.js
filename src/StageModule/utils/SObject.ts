@@ -270,6 +270,10 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.subset(this, keys);
     }
 
+    unwrap(): object {
+        return SObject.unwrap(this);
+    }
+
     add(other: Partial<this>): this;
     add(other: any): this {
         return SObject.add(this, other) as this;
@@ -654,6 +658,27 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return result;
     }
 
+    static unwrap<T>(obj: T): T;
+    static unwrap(obj: object): object {
+        if (typeof obj === "function" && RAW in obj) return SObject.unwrap((obj as any)[RAW]);
+        if (isCustomObject(obj)) {
+            const src = obj as any;
+            const out: any = Object.create(Object.prototype);
+            for (const key in src) {
+                if (key in Object.getPrototypeOf(obj)) continue;
+                const value = src[key];
+                if (isCustomObject(obj)) {
+                    out[key] = SObject.unwrap(value);
+                } else {
+                    out[key] = value;
+                }
+            }
+            return out;
+        }
+        return obj;
+    }
+
+
     static hasAll<T extends object>(target: T, keys: Array<PropertyKey>): boolean {
         for (let i = 0; i < keys.length; i++) {
             if (!(keys[i] in target)) return false;
@@ -712,45 +737,56 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     static deepEqual(a: any, b: any): boolean {
         if (a === b) return true; // handles primitives + identical refs
-        if (a && b && typeof a === "object" && typeof b === "object") {
-            if (a.constructor !== b.constructor) return false;
-
+        const aval = SObject.isSObject(a) ? a.raw().unwrap() : a;
+        const bval = SObject.isSObject(b) ? b.raw().unwrap() : b;
+        if (aval && bval && typeof aval === "object" && typeof bval === "object") {
+            if (aval.constructor !== bval.constructor) return false;
+            
             // Handle Arrays
-            if (Array.isArray(a)) {
-                if (a.length !== b.length) return false;
-                return a.every((val, i) => SObject.deepEqual(val, b[i]));
+            if (Array.isArray(aval)) {
+                if (aval.length !== bval.length) return false;
+                return aval.every((val, i) => SObject.deepEqual(val, bval[i]));
             }
 
             // Handle Maps
-            if (a instanceof Map) {
-                if (a.size !== b.size) return false;
-                for (const [key, val] of a) {
-                    if (!b.has(key) || !SObject.deepEqual(val, b.get(key))) return false;
+            if (aval instanceof Map) {
+                if (aval.size !== bval.size) return false;
+                for (const [key, val] of aval) {
+                    if (!bval.has(key) || !SObject.deepEqual(val, bval.get(key))) return false;
                 }
                 return true;
             }
 
             // Handle Sets
-            if (a instanceof Set) {
-                if (a.size !== b.size) return false;
-                for (const val of a)
-                    if (![...b].some((v) => SObject.deepEqual(v, val))) return false;
+            if (aval instanceof Set) {
+                if (aval.size !== bval.size) return false;
+                for (const val of aval)
+                    if (![...bval].some((v) => SObject.deepEqual(v, val))) return false;
                 return true;
             }
 
             // Handle Dates and RegExps
-            if (a instanceof Date) return a.getTime() === b.getTime();
-            if (a instanceof RegExp) return a.source === b.source && a.flags === b.flags;
+            if (aval instanceof Date) return aval.getTime() === bval.getTime();
+            if (aval instanceof RegExp) return aval.source === bval.source && aval.flags === bval.flags;
 
             // Handle plain objects
-            const keysA = Object.keys(a);
-            const keysB = Object.keys(b);
+            const keysA = Object.keys(aval);
+            const keysB = Object.keys(bval);
             if (keysA.length !== keysB.length) return false;
-
-            return keysA.every(k => keysB.includes(k) && SObject.deepEqual(a[k], b[k]));
+            
+            return keysA.every(k => keysB.includes(k) && SObject.deepEqual(aval[k], bval[k]));
         }
         // If one is object and other isn’t
         return false;
+    }
+
+    static isSObject(target: any): target is SObject {
+        if (Object.getPrototypeOf(target) === SObject.prototype) return true;
+        try {
+            return target?.[RAW] instanceof SObject;
+        } catch {
+            return false;
+        }
     }
 
     private static COUNT: number = 0;
