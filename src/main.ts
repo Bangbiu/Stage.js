@@ -60,6 +60,5 @@ window.addEventListener("resize", draw);
 document.fonts?.addEventListener?.("loadingdone", draw);
 draw();
 
-// SObjectTests.testAll();
-// AttributionTests.testAll();
-SObjectTests.testInteract();
+SObjectTests.testAll();
+AttributionTests.testAll();

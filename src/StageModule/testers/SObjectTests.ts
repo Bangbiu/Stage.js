@@ -170,20 +170,27 @@ export default Tester.of({
             a1.set(a1.get() * a2.get());
         }).assert(self => self.value === 100);
 
-        // Add
-        SObject.of({a: 1, b: 10}).add({b: 32})
-        .assert(self => self.a === 1 && self.b === 42);
 
-        SObject.of(2).set(10).add(3).add(10)
-        .assert(self => self.value.toString() === "23");
+        // ADD SUB MULT
+        SObject.of({a: 1, b: 10}).add({b: 32}).sub({a: 2}).mult(3)
+        .assert(self => self.a === -1 && self.b === 42);
+
+        SObject.of(2).set(10).add(3).add(10).sub(3).mult(0.5)
+        .assert(self => self.value.toString() === "10");
 
         SObject.of({ pos: {x: 2, y:3 }, vel: {x: 10, y: 6} }).add({
             pos: {x: 3, y: 2},
             vel: {x: 1, y: 10}
         }).assert(self => self.deepEqual({
             pos: {x: 5, y: 5}, vel: {x: 11, y: 16}
+        })).sub({vel: {x: 7, y: 10}})
+        .assert(self => self.deepEqual({
+            pos: {x: 5, y: 5}, vel: {x: 4, y: 6}
+        })).mult({pos: {x: 2, y: 0}})
+        .assert(self => self.deepEqual({
+            pos: {x: 10, y: 0}, vel: {x: 4, y: 6}
         }));
-        
+
     },
     
     testClone: function() {

@@ -42,26 +42,6 @@ const InteractLogger: InteractCallBack<any, any> = (a1, a2, p) =>
     console.log(p, "=", a1.get(), a2.get());
     
 
-// Operation Definition
-
-let ADDING: InteractCallBack<any, any> = (a1, a2) => {
-    if (a1.shareTypeSet(a2, JST_ADDABLE)) {
-        a1.add(a2);
-    }
-}
-
-let SUBING: InteractCallBack<any, any> = (a1, a2) => {
-    if (a1.shareTypeSet(a2, JST_SUBABLE)) {
-        a1.sub(a2);
-    }
-}
-
-let MULTING: InteractCallBack<any, any> = (a1, a2) => {
-    if (a1.shareTypeSet(a2, JST_MULTABLE)) {
-        a1.mult(a2);
-    }
-}
-
 class SObject implements Reproducable, ValueWrapper<any> {
     public value: any;
     private [RAW]: this;
@@ -101,8 +81,8 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return new SObject(this) as typeof this;
     }
 
-    class(): typeof this {
-        return this.constructor as unknown as typeof this;
+    class<Ctor = typeof SObject>(): Ctor {
+        return this.constructor as Ctor;
     }
 
     setValues( values: LoosePartialObject<this> = {}, assign: DataAssignType = ASN_DEF ): this {
@@ -154,9 +134,9 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.setIn(this, path, value, assign);
     }
 
-    invoke(path: MethodKeys<this>, args: any[], thisArg?: Object): any;
-    invoke(path: MethodPath<this>, args: any[], thisArg?: Object): any;
-    invoke(path: any, args: any[], thisArg?: Object): any {
+    invoke(path: keyof this, args?: any[], thisArg?: Object): any;
+    invoke(path: MethodPath<this>, args?: any[], thisArg?: Object): any;
+    invoke(path: any, args: any[] = [], thisArg?: Object): any {
         return SObject.invoke(this, path, args, thisArg);
     }
 
@@ -198,16 +178,10 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return this.attr(path).setter(value);
     }
     
-    invoker(path: MethodKeys<this>, args: any[], thisArg?: Object): () => any
-    invoker(path: MethodPath<this>, args: any[], thisArg?: Object): () => any
-    invoker(path: any, args: any[], thisArg?: Object): () => any {
-        const attr = this.attr(path);
-        const func = attr.get();
-        if (typeof func === "function") {
-            if (!thisArg) thisArg = attr.owner;
-            return (func as Function).bind(thisArg, ...args);
-        }
-        return noop;
+    invoker(path: keyof this, args?: any[], thisArg?: Object): () => any
+    invoker(path: MethodPath<this>, args?: any[], thisArg?: Object): () => any
+    invoker(path: any, args: any[] = [], thisArg?: Object): () => any {
+        return () => SObject.invoke(this, path, args, thisArg);
     }
 
     caller(args: any[], thisArg: Object = this) {
@@ -370,16 +344,16 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.getAttr(dest, path).get();
     }
 
-    static invoke<T extends object>(dest: T,path: MethodKeys<T>, args: any[], thisArg?: Object): any;
-    static invoke<T extends object>(dest: T,path: MethodPath<T>, args: any[], thisArg?: Object): any;
-    static invoke<T extends object>(dest: T,path: any, args: any[], thisArg?: Object): any {
+    static invoke<T extends object>(dest: T,path: keyof T, args?: any[], thisArg?: Object): any;
+    static invoke<T extends object>(dest: T,path: MethodPath<T>, args?: any[], thisArg?: Object): any;
+    static invoke<T extends object>(dest: T,path: any, args: any[] = [], thisArg?: Object): any {
         const attr = SObject.getAttr(dest, path);
         const func = attr.get();
         if (typeof func === "function") {
             if (!thisArg) thisArg = attr.owner;
             return (func as Function).apply(thisArg, args);
         }
-        return undefined;
+        return ABORT;
     }
 
     static tryGet<T extends object>(dest: T, path: keyof T, success?: AttemptCallBack, fail?: AttemptCallBack): T;
@@ -413,7 +387,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return dest;
     }
 
-    static tryCall<T extends object>(dest: T, path: MethodKeys<T>, args: any[],
+    static tryCall<T extends object>(dest: T, path: keyof T, args: any[],
         success?: AttemptCallBack, 
         fail?: AttemptCallBack
     ): T
@@ -453,21 +427,21 @@ class SObject implements Reproducable, ValueWrapper<any> {
         target1: T1, 
         target2: T2 | LoosePartial<T1>): T1 
     {
-        return SObject.act(target1, target2, ADDING);
+        return SObject.act(target1, target2, this.ADDING);
     }
 
     static sub<T1, T2>(
         target1: T1, 
         target2: T2 | LoosePartial<T1>): T1 
     {
-        return SObject.act(target1, target2, SUBING);
+        return SObject.act(target1, target2, this.SUBING);
     }
 
     static mult<T1, T2>(
         target1: T1, 
         target2: T2 | LoosePartial<T1>): T1 
     {
-        return SObject.act(target1, target2, MULTING);
+        return SObject.act(target1, target2, this.MULTING);
     }
 
     static traverse<T extends object>(
@@ -788,6 +762,24 @@ class SObject implements Reproducable, ValueWrapper<any> {
             return false;
         }
     }
+    
+    static ADDING: InteractCallBack<any, any> = (a1, a2) => {
+        if (a1.shareTypeSet(a2, JST_ADDABLE)) {
+            a1.add(a2);
+        }
+    }
+
+    static SUBING: InteractCallBack<any, any> = (a1, a2) => {
+        if (a1.shareTypeSet(a2, JST_SUBABLE)) {
+            a1.sub(a2);
+        }
+    }
+
+    static MULTING: InteractCallBack<any, any> = (a1, a2) => {
+        if (a1.shareTypeSet(a2, JST_MULTABLE)) {
+            a1.mult(a2);
+        }
+    }
 
     private static COUNT: number = 0;
 }
@@ -815,7 +807,7 @@ class Attribution extends SObject {
         return typeof this.get();
     }
 
-    public typeOf<T extends JSDataType>(dataType: T): boolean
+    public isTypeOf<T extends JSDataType>(dataType: T): boolean
     {
         return this.type === dataType;
     }
@@ -826,11 +818,11 @@ class Attribution extends SObject {
     }
 
     public isNumber(): boolean {
-        return this.typeOf("number");
+        return this.isTypeOf("number");
     }
 
     public isString(): boolean {
-        return this.typeOf("string");
+        return this.isTypeOf("string");
     }
 
     public sameTypeWith<T>(other: T): boolean  {
@@ -853,7 +845,7 @@ class Attribution extends SObject {
     }
 
     public getAsType<T extends JSDataType>(dataType: T, callback: (val: JSTypeMap[T]) => any) {
-        if (this.typeOf(dataType)) {
+        if (this.isTypeOf(dataType)) {
             callback(this.get() as JSTypeMap[T]);
         }
     }
@@ -892,7 +884,7 @@ class Attribution extends SObject {
     }
 
     call(args: any[] = [], thisArg: Object = this.owner): any {
-        if (this.typeOf("function")) 
+        if (this.isTypeOf("function")) 
             return (this.get() as Function).apply(thisArg, args);
         return undefined as FnReturn<any>;
     }

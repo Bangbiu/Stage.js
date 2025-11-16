@@ -1,8 +1,6 @@
 declare const APP_VERSION: string;
 
-type MethodKeys<T> = {
-    [K in keyof T]: T[K] extends (...args: any[]) => any ? K : never
-}[keyof T];
+
 
 type KeyPath<T extends Object> = string | Array<PropertyKey> | KeyArrayPath<T>;
 type MethodPath<T extends Object> = string | Array<PropertyKey> | MethodKeyArrayPath<T>;

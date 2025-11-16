@@ -159,7 +159,7 @@ declare type RelaxValueOf<T> =
 declare type ElementType<T> = T extends (infer U)[] ? U : never;
 // Class
 declare type ClassType<T> = new (...args: unknown[]) => T;
-declare type Constructor<T> = new (...args: unknown[]) => T;
+declare type Constructor<T> = new (...args: any[]) => T;
 
 declare interface ValueWrapper<T> {
     value: T;
