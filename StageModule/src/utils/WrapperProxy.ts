@@ -1,4 +1,4 @@
-import { DUMMY, isObjectLike, RAW } from "../StageCore.js";
+import { DUMMY, isObjectLike, RAW } from "../core/StageCore.js";
 
 export default function WrapperProxy<T extends ValueWrapper<any>>(obj: T): T {
     return new Proxy(DUMMY as unknown as T, {

@@ -1,0 +1,19 @@
+{
+    "name": "stage",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "dist/index.js",
+    "module": "dist/index.js",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "require": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "test": "node dist/tests/testAll.js"
+    },
+    "files": ["dist"],
+    "license": "MIT"
+}

@@ -13,17 +13,41 @@ import {
     JST_ADDABLE,
     JST_SUBABLE,
     JST_MULTABLE
-} from "../StageCore.js";
+} from "../core/StageCore.js";
 import WrapperProxy from "./WrapperProxy.js";
 
 
-type AccessAttemptCallBack = (attr: Attribution) => any;
-type TraverseCallBack<R extends object> = (
+declare type KeyPath<T extends Object> = string | Array<PropertyKey> | KeyArrayPath<T>;
+
+// arrays/tuples should use numeric indexes only, not "length"/methods
+declare type IndexKey<T> = Extract<keyof T, PropertyKey>;
+
+/** Paths that may stop at any depth (prefixes allowed). */
+// depth-limited KeyArrayPath
+declare type KeyArrayPath<T, D extends Depth = 5> =
+  // if we've hit depth 0, fall back to a generic PropertyKey[]
+  D extends 0
+    ? Array<PropertyKey>
+    : IsFn<T> extends true
+      // functions: your original base case
+      ? Array<PropertyKey>
+      : T extends object
+        ? {
+            [K in IndexKey<T>]:
+              [K, ...KeyArrayPath<T[K], Dec<D>>]
+          }[IndexKey<T>]
+        // non-objects: your original base case
+        : Array<PropertyKey>;
+
+declare type OpsReturn = Voidable<boolean | symbol | object>
+
+declare type AccessAttemptCallBack = (attr: Attribution) => any;
+declare type TraverseCallBack<R extends object> = (
     attr: Attribution,
     path: KeyArrayPath<R>,
     root: R
 ) => OpsReturn;
-type InteractCallBack<R1 extends object, R2 extends object> = (
+declare type InteractCallBack<R1 extends object, R2 extends object> = (
     attr1: Attribution,
     attr2: Attribution,
     path: KeyArrayPath<R1 & R2>,
@@ -31,7 +55,7 @@ type InteractCallBack<R1 extends object, R2 extends object> = (
     root2: R2
 ) => OpsReturn;
 
-type AttrDoCallback<A extends Attribution> 
+declare type AttrDoCallback<A extends Attribution> 
     = (attr: A, curValue: any, otherValue: any) => OpsReturn;
 
 const TraverseLogger: TraverseCallBack<any> = (attr, path) => 
@@ -65,7 +89,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return typeof this.value;
     }
 
-    get keys(): keyof this {
+    get thisKeys(): keyof this {
         return Object.keys(this) as unknown as keyof this;
     }
 
@@ -111,7 +135,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.trySet(this, path, value, success, fail, assign);
     }
 
-    tryCall(path: MethodPath<this>, args: any[],
+    tryCall(path: KeyPath<this>, args: any[],
         success: AttemptCallBack = noop, 
         fail: AttemptCallBack = noop
     ) {
@@ -135,7 +159,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
     invoke(path: keyof this, args?: any[], thisArg?: Object): any;
-    invoke(path: MethodPath<this>, args?: any[], thisArg?: Object): any;
+    invoke(path: KeyPath<this>, args?: any[], thisArg?: Object): any;
     invoke(path: any, args: any[] = [], thisArg?: Object): any {
         return SObject.invoke(this, path, args, thisArg);
     }
@@ -179,7 +203,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
     
     invoker(path: keyof this, args?: any[], thisArg?: Object): () => any
-    invoker(path: MethodPath<this>, args?: any[], thisArg?: Object): () => any
+    invoker(path: KeyPath<this>, args?: any[], thisArg?: Object): () => any
     invoker(path: any, args: any[] = [], thisArg?: Object): () => any {
         return () => SObject.invoke(this, path, args, thisArg);
     }
@@ -345,7 +369,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
     static invoke<T extends object>(dest: T,path: keyof T, args?: any[], thisArg?: Object): any;
-    static invoke<T extends object>(dest: T,path: MethodPath<T>, args?: any[], thisArg?: Object): any;
+    static invoke<T extends object>(dest: T,path: KeyPath<T>, args?: any[], thisArg?: Object): any;
     static invoke<T extends object>(dest: T,path: any, args: any[] = [], thisArg?: Object): any {
         const attr = SObject.getAttr(dest, path);
         const func = attr.get();
@@ -391,7 +415,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         success?: AttemptCallBack, 
         fail?: AttemptCallBack
     ): T
-    static tryCall<T extends object>(dest: T, path: MethodPath<T>, args: any[],
+    static tryCall<T extends object>(dest: T, path: KeyPath<T>, args: any[],
         success?: AttemptCallBack, 
         fail?: AttemptCallBack
     ): T
@@ -467,7 +491,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
         target1: T1, 
         target2: T2 | LoosePartial<T1>,
         callback: InteractCallBack<ResolvedAsObject<T1>, ResolvedAsObject<T2>> = InteractLogger,
-        rootPath: KeyArrayPath<ResolvedAsObject<T1> & ResolvedAsObject<T2>> = []
+        rootPath: Array<PropertyKey> = []
     ): T1 {
         const t1 = resolveAsCustomObject(target1) as object;
         const t2 = resolveAsCustomObject(target2) as object; 
@@ -600,7 +624,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     static resolveKeyPath<T extends object>(path: KeyPath<T>): KeyArrayPath<T> {
         if (path instanceof Array)
-            return path;
+            return path as KeyArrayPath<T>;
         else if (typeof path === "string")
             return path.split(ATTR_SPLITER) as KeyArrayPath<T>;
         else
@@ -786,7 +810,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
 
 const SObjectExporter = SObject as {
-    new <T>(properties: NonCustomObject<T>, assign?: DataAssignType): SObject & ValueWrapper<Widen<T>>;
+    new <T>(properties: NonCustomObject<T>, assign?: DataAssignType): SObject & ValueWrapper<T>;
     new <T>(properties: CustomObject<T>, assign?: DataAssignType): SObject & T;
 } & typeof SObject;
 
@@ -992,4 +1016,10 @@ export {
     SObjectExporter as SObject,
     SObject as SObjectBase,
     Attribution
+}
+
+export type {
+    KeyPath,
+    KeyArrayPath,
+    IndexKey
 }

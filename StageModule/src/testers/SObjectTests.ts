@@ -79,7 +79,7 @@ const complexObject: Person = {
     }
 }
 
-export default Tester.of({
+const SObjectTests = Tester.of({
     playground: function() {
         const a = SObject.of(2);
         a.value = 4;
@@ -444,3 +444,7 @@ export default Tester.of({
         });
     }
 });
+
+export {
+    SObjectTests
+}

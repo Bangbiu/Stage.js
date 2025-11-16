@@ -10,7 +10,7 @@ const JST_SUBABLE: JSTypeSet = ["number"];
 const JST_MULTABLE: JSTypeSet = ["number"];
 const DUMMY = () => {};
 
-const NATIVE_CTORS = [
+const NATIVE_CLASS = [
     Object, Array, Map, Set, WeakMap, WeakSet,
     Date, RegExp, Promise, Error
 ] as const;
@@ -48,7 +48,7 @@ function isCustomObject(value: any): value is object {
     // Filter Out Native Object
     const ctor = proto.constructor;
     if (!ctor) return false;
-    if (NATIVE_CTORS.includes(ctor)) return proto === Object.prototype;
+    if (NATIVE_CLASS.includes(ctor)) return proto === Object.prototype;
 
     // Anything with a constructor that's not one of the native built-ins
     // is considered a "custom class instance"

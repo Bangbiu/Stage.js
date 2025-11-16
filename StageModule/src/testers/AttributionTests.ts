@@ -1,6 +1,6 @@
-import { Attribution, SObject } from "../utils/SObject.js";
+import { Attribution } from "../utils/SObject.js";
 import { Tester } from "./Tester.js";
-export default Tester.of({
+const AttributionTests = Tester.of({
     test1: function() {
         const o1 = { value: 4 };
         const o2 = { value: 6 };
@@ -36,3 +36,7 @@ export default Tester.of({
 
     }
 });
+
+export {
+    AttributionTests
+}

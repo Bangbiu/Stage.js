@@ -1,11 +1,4 @@
-import AttributionTests from "./StageModule/testers/AttributionTests.js";
-import SObjectTests from "./StageModule/testers/SObjectTests.js";
-import { Tester } from "./StageModule/testers/Tester.js";
-import { Attribution, SObject } from "./StageModule/utils/SObject.js";
-
-// import AttributionTests from "./StageModule/testers/AttributionTests.js";
-// import SObjectTests from "./StageModule/testers/SObjectTests.js";
-
+import * as Stage from "../StageModule/dist/index.js";
 
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
@@ -60,5 +53,6 @@ window.addEventListener("resize", draw);
 document.fonts?.addEventListener?.("loadingdone", draw);
 draw();
 
-SObjectTests.testAll();
-AttributionTests.testAll();
+
+Stage.SObjectTests.testAll();
+Stage.AttributionTests.testAll();
