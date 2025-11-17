@@ -56,12 +56,11 @@ draw();
 
 Stage.Tester.runAll();
 const so = Stage.SObject.of({
-    a: 1,
-    b: 2
+    a: 3,
+    b: 4
 })
 
 
-for (const item of so.traversal()) {
-    console.log(item.attr.key);
-    
+for (const item of so) {
+    console.log(item.attr.toString());
 }

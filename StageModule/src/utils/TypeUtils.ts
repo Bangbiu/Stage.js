@@ -169,7 +169,7 @@ declare global {
     }
 
     interface Reproducable {
-        clone(): this;
+        clone(): Reproducable;
         copy(other: Partial<this>): this;
     }
 
@@ -211,7 +211,6 @@ declare global {
 
     type DataAssignType = "identical"|"clone"|"uninit";
 
-    // type Rotationizable = Rotation2D | number | string;
     // type Vectorizable =  Vector2D | [number,number] | string | number;
     // type Rectizable =  Rect2D | Array<number> | string | number;
     // type Colorizable = Color | string | number | Array<number>;

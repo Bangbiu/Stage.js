@@ -85,9 +85,8 @@ const InteractLogger: InteractCallBack<any, any> = (a1, a2, p) =>
 
 class SObject implements Reproducable, ValueWrapper<any> {
     public value: any;
-    private [RAW]: this;
+    private [RAW]?: this;
     constructor( properties?: any, assign: DataAssignType = ASN_DEF ) {
-        this[RAW] = this;
         if (properties) {
             if (isCustomObject(properties)) 
                 this.setValues(properties, assign);
@@ -106,16 +105,18 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return typeof this.value;
     }
 
-    raw(): this {
+    raw(): Opt<this> {
         return this[RAW];
     }
 
-    copy(source: Partial<this>): this {
+    copy<T extends SObject>(source: T): this;
+    copy(source: Partial<this>): this;
+    copy(source: any): this {
         return this.updateValues(source, ASN_DEF);
     }
 
-    clone(): this {
-        return new SObject(this) as typeof this;
+    clone<T extends this = this>(): T {
+        return new SObject(this) as T;
     }
 
     thisKeys(): Array<keyof this> {
@@ -289,6 +290,17 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.act(this, target, callback as any);
     }
 
+    *interaction<T>(
+        target: T,
+        rootPath: Array<PropertyKey> = []
+    ): Generator<InteractItem<ResolvedAsObject<this>, ResolvedAsObject<T>>, void, OpsReturn> {
+        yield* SObject.action(this, target, rootPath);
+    }
+
+    *[Symbol.iterator]() {
+        yield* this.traversal();
+    }
+
     subset(keys: Array<keyof this>): SObject & Partial<this> {
         return SObject.subset(this, keys);
     }
@@ -349,11 +361,11 @@ class SObject implements Reproducable, ValueWrapper<any> {
                 () => console.log(attr.call(args)) : 
                 () => console.log(attr.get());
         } else {
-            return () => console.log(this.raw());
+            return () => console.log(this);
         }
     }
 
-    debug(callback: (self: this) => any = self => self.raw()) {
+    debug(callback: (self: this) => any = self => self) {
         console.log(callback(this));
     }
 
@@ -378,7 +390,12 @@ class SObject implements Reproducable, ValueWrapper<any> {
     static of<T>(target: CustomObject<T>, assign?: DataAssignType, ..._args: any[]): SObject & T;
     static of(target: any, assign: DataAssignType = ASN_DEF, ..._args: any[]): SObject {
         const raw = new SObject(target, assign);
-        return isCustomObject(target) ? raw : WrapperProxy(raw);
+        if (isCustomObject(target)) {
+            return raw;
+        } else {
+            raw[RAW] = raw;
+            return WrapperProxy(raw);
+        }
     }
 
     static setIn<T extends object>(dest: T, path: keyof T, value: any, assign?: DataAssignType): boolean
@@ -818,8 +835,8 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     static deepEqual(a: any, b: any): boolean {
         if (a === b) return true; // handles primitives + identical refs
-        const aval = SObject.isSObject(a) ? a.raw().unwrap() : a;
-        const bval = SObject.isSObject(b) ? b.raw().unwrap() : b;
+        const aval = SObject.isSObject(a) ? a.unwrap() : a;
+        const bval = SObject.isSObject(b) ? b.unwrap() : b;
         if (aval && bval && typeof aval === "object" && typeof bval === "object") {
             if (aval.constructor !== bval.constructor) return false;
             
@@ -863,11 +880,8 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     static isSObject(target: any): target is SObject {
         if (Object.getPrototypeOf(target) === SObject.prototype) return true;
-        try {
-            return target?.[RAW] instanceof SObject;
-        } catch {
-            return false;
-        }
+        if (typeof target == "function" && RAW in target && target[RAW] instanceof SObject) return true;
+        return false;
     }
     
     static ADDING: InteractCallBack<any, any> = (a1, a2) => {
@@ -1051,6 +1065,10 @@ class Attribution extends SObject {
 
     feed(callback: AttemptCallBack) {
         callback(this.get(), this.owner, this.key);
+    }
+
+    toString(): string {
+        return `[${this.className}: ${Object.getPrototypeOf(this.owner)}[${this.key.toString()}]]`;
     }
 
     static attributize(data: any[]): Attribution[] {

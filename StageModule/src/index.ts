@@ -1,6 +1,7 @@
 export * from "./core/StageCore.js";
 export * from "./utils/SObject.js";
 export * from "./utils/SOrderedMap.js";
+export * from "./math/SMath.js";
 
 import "./testers/AttributionTests.js";
 import "./testers/SObjectTests.js";

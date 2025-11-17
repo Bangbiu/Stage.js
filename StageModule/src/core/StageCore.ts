@@ -9,13 +9,11 @@ const JST_ADDABLE: JSTypeSet = ["string", "number", "bigint"];
 const JST_SUBABLE: JSTypeSet = ["number"];
 const JST_MULTABLE: JSTypeSet = ["number"];
 const DUMMY = () => {};
-
+const noop = () => {};
 const NATIVE_CLASS = [
     Object, Array, Map, Set, WeakMap, WeakSet,
     Date, RegExp, Promise, Error
 ] as const;
-
-const noop = () => {};
 
 let ASN_DEF: DataAssignType = DATA_CLONE;
 let JTS_DEF: JSTypeSet = ["number", "boolean", "string"] as const;
@@ -24,6 +22,10 @@ function resolveAsCustomObject<T>(value: T): ResolvedAsObject<T> {
     if (isCustomObject(value)) 
         return value as ResolvedAsObject<T>;
     return { value } as ResolvedAsObject<T>; // Wrapper
+}
+
+function isTypeIn(target: any, typeset: JSTypeSet): boolean {
+    return typeset.includes(typeof target);
 }
 
 function isObjectLike<T>(v: NonNullable<T>): boolean {
@@ -101,5 +103,7 @@ export {
     isCustomObject,
     isObjectLike,
     isPOJO,
-    getAllKeys
+    isTypeIn,
+    getAllKeys,
+
 }

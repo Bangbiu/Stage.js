@@ -44,15 +44,14 @@ export default class SOrderedMap<K extends PropertyKey, V> extends SObject {
         return undefined;
     }
 
-    /** Number of entries */
-    get size() { return this.keys.length; }
-
-    /** Iterate in order */
-    *[Symbol.iterator]() {
+    *entries(): Generator<[K, V], void, void> {
         for (const key of this.keys) {
             yield [key, this.get(key)] as [K, V];
         }
     }
+
+    /** Number of entries */
+    get size() { return this.keys.length; }
 
     static flat<K extends PropertyKey, V>(arr: Array<MapEntry<K, V>>): object {
         const obj = Object.create(Object.prototype);

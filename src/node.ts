@@ -1,2 +1,6 @@
 import * as Stage from "../StageModule/dist/index.js";
-console.log(Stage.Tester.AttributionTests);
+
+for (const value of Stage.range(2, 10)) {
+    console.log(value);
+    
+}

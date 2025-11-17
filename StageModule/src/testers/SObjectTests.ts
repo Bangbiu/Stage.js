@@ -246,8 +246,9 @@ const Tests = Tester.of({
         const ks = so.thisKeys() as string[];
         console.assert(Array.isArray(ks) && ks.includes("a"));
 
-        console.assert(so.raw() === so);
+        console.assert(so.raw() === undefined);
         console.assert(typeof so.toString() === "string");
+        console.assert(SObject.of(2).raw() !== undefined);
     },
 
     testSetUpdateInsertInitializeCopyAssign: function() {
