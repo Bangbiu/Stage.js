@@ -79,7 +79,7 @@ const complexObject: Person = {
     }
 }
 
-const SObjectTests = Tester.of({
+const Tests = Tester.of({
     playground: function() {
         const a = SObject.of(2);
         a.value = 4;
@@ -243,7 +243,7 @@ const SObjectTests = Tester.of({
         so.assert(self => self.className === "SObject");
         so.assert(self => self.valueType === "undefined");
 
-        const ks = (so as any).keys as string[];
+        const ks = so.thisKeys() as string[];
         console.assert(Array.isArray(ks) && ks.includes("a"));
 
         console.assert(so.raw() === so);
@@ -295,9 +295,9 @@ const SObjectTests = Tester.of({
 
     testResolveAndResolveAll: function() {
         // instance resolve
-        const so = SObject.of({ nested: { v: 1 } });
-        so.resolve("nested", SObject as any);
-        so.assert(self => self.nested instanceof SObject);
+        const so1 = SObject.of({ nested: { v: 1 } });
+        so1.resolve("nested", SObject as any);
+        so1.assert(self => self.nested instanceof SObject);
 
         // static resolve
         const holder: any = { nested: { v: 2 } };
@@ -305,8 +305,8 @@ const SObjectTests = Tester.of({
         console.assert(holder.nested instanceof SObject);
 
         // resolveAll (currently identity)
-        const same = so.resolveAll();
-        console.assert(same === so);
+        const so2 = new SObject({a: 123, b: 321}).resolveAll(SObject);
+        console.assert((so2.a as any) instanceof SObject);
     },
 
     testAttrAndAttributionAlias: function() {
@@ -445,6 +445,7 @@ const SObjectTests = Tester.of({
     }
 });
 
-export {
-    SObjectTests
-}
+export default Tests;
+Tester.SObjectTests = Tests;
+
+

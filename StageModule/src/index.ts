@@ -1,8 +1,10 @@
 export * from "./core/StageCore.js";
 export * from "./utils/SObject.js";
 
-export * from "./testers/AttributionTests.js";
-export * from "./testers/SObjectTests.js"
+
+import "./testers/AttributionTests.js";
+import "./testers/SObjectTests.js";
+export * from "./testers/Tester.js";
 
 // Types
 // export * from "./utils/TypeUtils";

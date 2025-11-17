@@ -89,10 +89,6 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return typeof this.value;
     }
 
-    get thisKeys(): keyof this {
-        return Object.keys(this) as unknown as keyof this;
-    }
-
     raw(): this {
         return this[RAW];
     }
@@ -103,6 +99,10 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     clone(): this {
         return new SObject(this) as typeof this;
+    }
+
+    thisKeys(): Array<keyof this> {
+        return Object.keys(this) as unknown as Array<keyof this>;
     }
 
     class<Ctor = typeof SObject>(): Ctor {
@@ -143,6 +143,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
     getFrom(path: keyof this): any;
+    getFrom(path: PropertyKey): any;
     getFrom(path: KeyPath<this>): any;
     getFrom(path: any): any {
         return SObject.getFrom(this, path);
@@ -176,11 +177,12 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return this.trySet("value", value, success, fail, assign);
     }
 
-    get(): any {
+    get(..._args: any[]): any {
         return this.value;
     }
 
-    set(value: any, assign: DataAssignType = ASN_DEF) {
+
+    set(value: any, assign: DataAssignType = ASN_DEF): this {
         return SObject.assign(this, "value", value, assign);
     }
 
@@ -215,7 +217,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
     assign(key: keyof this, value: any, type?: DataAssignType): this;
-    assign(key: string, value: any, type?: DataAssignType): this;
+    assign(key: PropertyKey, value: any, type?: DataAssignType): this;
     assign(key: any, value: any, type: DataAssignType = ASN_DEF): this {
         return SObject.assign(this, key, value, type);
     }
@@ -227,7 +229,8 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
     has(key: keyof this): boolean;
-    has(key: PropertyKey): boolean {
+    has(key: PropertyKey): boolean;
+    has(key: any): boolean {
         return key in this;
     }
 
@@ -239,8 +242,9 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.resolve(this, key, cls);
     }
 
-    resolveAll(other: object = this): object {
-        return other;
+    resolveAll<T extends object>(cls: Constructor<T>): this {
+        for (const key in this) this.resolve(key, cls);
+        return this;
     }
 
     attr(path: keyof this): Attribution
@@ -874,8 +878,8 @@ class Attribution extends SObject {
         }
     }
 
-    public getAsInstance<T extends object>(
-        ctor: Constructor<T>,
+    public getAsInstance<T extends object = object>(
+        ctor: ClassType<T>,
         callback: (val: T) => any
     ) {
         const v = this.get() as unknown;

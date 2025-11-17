@@ -160,7 +160,7 @@ declare global {
     // Array
     declare type ElementType<T> = T extends (infer U)[] ? U : never;
     // Class
-    declare type ClassType<T> = new (...args: any[]) => T;
+    declare type ClassType<T> = Function & { prototype: T };
     declare type Constructor<T> = new (...args: any[]) => T;
 
     declare interface ValueWrapper<T> {

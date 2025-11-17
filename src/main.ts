@@ -54,5 +54,4 @@ document.fonts?.addEventListener?.("loadingdone", draw);
 draw();
 
 
-Stage.SObjectTests.testAll();
-Stage.AttributionTests.testAll();
+Stage.Tester.runAll();
