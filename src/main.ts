@@ -55,3 +55,13 @@ draw();
 
 
 Stage.Tester.runAll();
+const so = Stage.SObject.of({
+    a: 1,
+    b: 2
+})
+
+
+for (const item of so.traversal()) {
+    console.log(item.attr.key);
+    
+}

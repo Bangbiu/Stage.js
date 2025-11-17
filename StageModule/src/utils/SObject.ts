@@ -58,6 +58,23 @@ declare type InteractCallBack<R1 extends object, R2 extends object> = (
 declare type AttrDoCallback<A extends Attribution> 
     = (attr: A, curValue: any, otherValue: any) => OpsReturn;
 
+
+// Generator
+declare interface TraverseItem<T extends object> {
+    attr: Attribution;
+    path: KeyArrayPath<T>;
+    root: T;
+};
+
+declare interface InteractItem<R1 extends object, R2 extends object> {
+    attr1: Attribution;
+    attr2: Attribution;
+    path: KeyArrayPath<R1 & R2>;
+    root1: R1;
+    root2: R2;
+};
+
+
 const TraverseLogger: TraverseCallBack<any> = (attr, path) => 
     console.log(path, " = ", attr.get());
     // console.log(path.join(ATTR_SPLITER) + ": ", target[key]);
@@ -198,9 +215,9 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return this.attr(path).getter();
     }
     
-    setter(path: keyof this, value?: any): Setter<any>;
-    setter(path: KeyPath<this>, value?: any): Setter<any>;
-    setter(path: any, value?: any): Setter<any> {
+    setter(path: keyof this, value?: any): Setter<any, Attribution>;
+    setter(path: KeyPath<this>, value?: any): Setter<any, Attribution>;
+    setter(path: any, value?: any): Setter<any, Attribution> {
         return this.attr(path).setter(value);
     }
     
@@ -259,6 +276,10 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     traverse(callback: TraverseCallBack<this> = TraverseLogger): this {
         return SObject.traverse(this, callback);
+    }
+
+    *traversal(rootPath: Array<PropertyKey> = []): Generator<TraverseItem<this>, void, OpsReturn> {
+        yield* SObject.traversal(this, rootPath);
     }
 
     interact<T extends LoosePartial<this>>(
@@ -355,7 +376,7 @@ class SObject implements Reproducable, ValueWrapper<any> {
 
     static of<T>(properties: NonCustomObject<T>, assign?: DataAssignType, ..._args: any[]): SObject & BoxedWrapper<T>;
     static of<T>(target: CustomObject<T>, assign?: DataAssignType, ..._args: any[]): SObject & T;
-    static of(target: any, assign: DataAssignType = ASN_DEF, ..._args: any[]): any {
+    static of(target: any, assign: DataAssignType = ASN_DEF, ..._args: any[]): SObject {
         const raw = new SObject(target, assign);
         return isCustomObject(target) ? raw : WrapperProxy(raw);
     }
@@ -473,23 +494,37 @@ class SObject implements Reproducable, ValueWrapper<any> {
     }
 
     static traverse<T extends object>(
-        target: T,  
-        callback: TraverseCallBack<T> = TraverseLogger, 
-        rootPath: Array<PropertyKey> = [],
-        root: T = target
+        target: T,
+        callback: TraverseCallBack<T> = TraverseLogger
     ): T {
-        for (const key in target) {
-            const attr = Attribution.of(target, key);
-            const curPath = [...rootPath, key] as any;
-            const ret = callback(attr, curPath, root);
-            if (ret === ABORT) return target;
-            else if (ret === false) continue;
-            const value = attr.get();
-            if (isCustomObject(value))
-                SObject.traverse(value as T, callback, curPath, root);
+        const genator = SObject.traversal(target);
+        let item = genator.next();
+        while(!item.done) {
+            const { attr, path, root } = item.value;
+            item = genator.next(callback(attr, path, root));
         }
         return target;
-    } 
+    }
+
+
+    static *traversal<T extends object>(
+        target: T,
+        rootPath: Array<PropertyKey> = [],
+        root: T = target
+    ): Generator<TraverseItem<T>, void, OpsReturn> {
+        for (const key in target) {
+            const attr = Attribution.of(target, key);
+            const path = [...rootPath, key] as any;
+            const ret = yield { attr, path, root };
+            if (ret === ABORT) return;
+            else if (ret === false) continue;
+            const value = attr.get();
+            if (isCustomObject(value)) {
+                yield* SObject.traversal(value as T, path, root);
+            }
+        }
+    }
+
 
     static act<T1, T2>(
         target1: T1, 
@@ -500,6 +535,16 @@ class SObject implements Reproducable, ValueWrapper<any> {
         const t1 = resolveAsCustomObject(target1) as object;
         const t2 = resolveAsCustomObject(target2) as object; 
         return SObject.interact(t1, t2, callback, rootPath) as T1;
+    }
+
+    static *action<T1, T2>(
+        target1: T1, 
+        target2: T2 | LoosePartial<T1>,
+        rootPath: Array<PropertyKey> = []
+    ): Generator<InteractItem<ResolvedAsObject<T1>, ResolvedAsObject<T2>>, void, OpsReturn> {
+        const t1 = resolveAsCustomObject(target1) as object;
+        const t2 = resolveAsCustomObject(target2) as object; 
+        yield* SObject.interaction(t1, t2, rootPath);
     }
 
     static interact<
@@ -513,21 +558,55 @@ class SObject implements Reproducable, ValueWrapper<any> {
         root1: R1 = target1 as unknown as R1, 
         root2: R2 = target2 as unknown as R2
     ): R1 {
+        const genator = SObject.interaction(target1, target2, rootPath, root1, root2);
+        let item = genator.next();
+        while (!item.done) {
+            const { attr1, attr2, path, root1, root2 } = item.value;
+            item = genator.next(callback(attr1, attr2, path, root1, root2));
+        }
+        return root1;
+    }
+
+    static *interaction<
+        T1 extends object,
+        T2 extends LoosePartialObject<T1>,
+        R1 extends object = T1,
+        R2 extends object = T2
+    >(
+        target1: T1,
+        target2: T2 | LoosePartialObject<T1>,
+        rootPath: Array<PropertyKey> = [],
+        root1: R1 = target1 as unknown as R1,
+        root2: R2 = target2 as unknown as R2
+    ): Generator<InteractItem<R1, R2>, void, OpsReturn> {
         for (const key in target1) {
             if (SObject.hasKey(target2, key)) {
                 const attr1 = Attribution.of(target1, key);
                 const attr2 = Attribution.of(target2, key);
-                const curPath = [...rootPath, key] as any;
-                const ret = callback(attr1, attr2, curPath, root1, root2);
-                if (ret === ABORT) return root1;
-                else if (ret === false) continue;
+                const path = [...rootPath, key] as any;
+                const directive = yield {
+                    attr1,
+                    attr2,
+                    path,
+                    root1,
+                    root2
+                };
+                if (directive === ABORT) return;
+                if (directive === false) continue;
                 const value1 = attr1.get();
                 const value2 = attr2.get();
-                if (isCustomObject(value1) && isCustomObject(value2)) 
-                    SObject.interact(value1, value2, callback, curPath, root1, root2);       
+                if (isCustomObject(value1) && isCustomObject(value2)) {
+                    yield* SObject.interaction(
+                        value1,
+                        value2,
+                        path,
+                        root1,
+                        root2
+                    );
+                }
             }
         }
-        return root1;
+        return;
     }
 
     static initialize<T extends object>(target: T, values: Partial<T>, def: LoosePartialObject<T>, assign: DataAssignType = ASN_DEF): T {
@@ -903,12 +982,10 @@ class Attribution extends SObject {
     }
 
     public setter(value: any): () => this;
-    public setter(): Setter<any>;
+    public setter(): Setter<any, this>;
     public setter(value?: any): any {
-        if (value)
-            return this.set.bind(this, value);
-        else
-            return this.set.bind(this);
+        if (value) return this.set.bind(this, value);
+        else return this.set.bind(this);
     }
 
     call(args: any[] = [], thisArg: Object = this.owner): any {
