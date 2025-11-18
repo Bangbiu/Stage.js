@@ -26,6 +26,7 @@ Thumbs.db
 
 # Editor configs / caches
 .vscode/
+!.vscode/launch.json
 .idea/
 *.swp
 *.swo
