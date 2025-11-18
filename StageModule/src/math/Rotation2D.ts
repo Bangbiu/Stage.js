@@ -1,27 +1,17 @@
 import { isTypeIn } from "../core/StageCore.js";
 import { SObject } from "../utils/SObject.js";
 
-type Rotationizable = Rotation2D | number | string;
+type Rotationizable = Rotation2D | Partial<Rotation2D> | number | string;
 
 const PI: number = Math.PI;
 const DPI: number = PI * 2;
 const ROUND_OFF = 0.0001;
 
 export default class Rotation2D extends SObject {
-    value: number = 0.0;
-    constructor(val: Rotationizable = 0) {
+    value: number;
+    constructor(rad: number = 0.0) {
         super();
-        if (val instanceof Rotation2D) 
-            this.copy(val);
-        else if (val == undefined)
-            this.rad = 0.0;
-        else {
-            val = Number(val);
-            if (Number(val) > DPI) 
-                this.deg = val;
-            else
-                this.rad = val;
-        } 
+        this.value = rad;
     }
 
     get rad(): number {
@@ -40,28 +30,16 @@ export default class Rotation2D extends SObject {
         this.rad = Rotation2D.toRad(degree);
     }
 
-    set(other: Partial<this>): this
-    set(other: Rotationizable): this
-    set(other: any): this {
-        if (other instanceof Rotation2D)
-            this.rad = other.rad;
-        else if (typeof other === "object")
-            this.updateValues(other);
-        else
-            this.rad = Number(other);
-        return this;
+    set(other: Rotationizable): this {
+        return this.copy(Rotation2D.of(other));
     }
 
-    add(other: Partial<this>): this;
     add(other: Rotationizable): this;
     add(other: any): this {
         if (other instanceof Rotation2D)
             return this.rotate(other.rad);
-        else if (typeof other === "object")
-            super.add(other);
-        else
-            this.rotate(Number(other));
-        return this;
+        else 
+            return this.add(Rotation2D.of(other));
     }
 
     sub(other: Partial<this>): this;
@@ -69,10 +47,12 @@ export default class Rotation2D extends SObject {
     sub(other: any): this {
         if (other instanceof Rotation2D)
             return this.rotate(-other.rad);
-        else if (typeof other === "object")
-            super.sub(other);
-        else
-            this.rotate(-other);
+        else 
+            return this.sub(Rotation2D.of(other));
+    }
+
+    mult(other: Rotationizable): this;
+    mult(_other: any): this {
         return this;
     }
 
@@ -98,26 +78,18 @@ export default class Rotation2D extends SObject {
     copy(source: Rotation2D): this;
     copy(source: Partial<this>): this;
     copy(source: any): this {
-        return this.set(source);
+        return this.updateValues(source);
     }
 
-    clone<T extends Rotation2D = Rotation2D>(): T {
-        return new Rotation2D(this) as T;
+    clone(): this {
+        return new Rotation2D(this.rad) as this;
     }
 
-    equals<T>(other: T): boolean {
+    equals(other: Rotationizable): boolean {
         if (other instanceof Rotation2D)
             return Math.abs(this.rad - other.rad) < ROUND_OFF;
-        else if (typeof other === "object") {
-            return super.equals(other as any);
-        } else if (isTypeIn(other, ["number", "string"])) {
-            return this.rad == other || this.deg == other;
-        }
-        return false;
-    }
-
-    equivalent(other: Rotationizable): boolean {
-        return this.equals(new Rotation2D(other));
+        else
+            return this.equals(Rotation2D.of(other));
     }
 
     static toRad(degree: number): number {
@@ -126,6 +98,20 @@ export default class Rotation2D extends SObject {
     
     static toDeg(radian: number): number {
         return 180 * radian / PI;
+    }
+
+
+    static of<T>(val: Rotationizable): Rotation2D;
+    static of(val: any, ..._args: any[]): Rotation2D {
+        if (val instanceof Rotation2D) return val;
+        if (isTypeIn(val, ["number", "string"])) {
+            return new Rotation2D(Number(val));
+        } else if (val instanceof Rotation2D) {
+            return new Rotation2D(val.value);
+        } else if (typeof val === "object"){
+            return new Rotation2D().copy(val);
+        }
+        throw new Error("Create Rotation with Invalid Value");
     }
 
     static operatable: JSTypeSet = ["number", "string", "object"];

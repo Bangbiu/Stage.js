@@ -103,6 +103,10 @@ declare global {
     };
 
     type Dec<D extends Depth> = PrevDepth[D];
+    type Tuple<T, N extends number, Acc extends T[] = []> = 
+        Acc['length'] extends N 
+            ? Acc 
+            : Tuple<T, N, [...Acc, T]>;
 
     type JSTypeMap = {
         string: string;
@@ -211,8 +215,6 @@ declare global {
 
     type DataAssignType = "identical"|"clone"|"uninit";
 
-    // type Vectorizable =  Vector2D | [number,number] | string | number;
-    // type Rectizable =  Rect2D | Array<number> | string | number;
     // type Colorizable = Color | string | number | Array<number>;
     // type Graphizable = string | Graphics2D | Polygon;
     // type Numerizable = number | string;

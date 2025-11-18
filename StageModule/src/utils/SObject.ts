@@ -115,11 +115,11 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return this.updateValues(source, ASN_DEF);
     }
 
-    clone<T extends this = this>(): T {
-        return new SObject(this) as T;
+    clone(): this {
+        return new SObject(this) as this;
     }
 
-    thisKeys(): Array<keyof this> {
+    thisKeys(): Array<PropertyKey> {
         return Object.keys(this) as unknown as Array<keyof this>;
     }
 
@@ -308,8 +308,10 @@ class SObject implements Reproducable, ValueWrapper<any> {
     unwrap(): object {
         return SObject.unwrap(this);
     }
-
+    
+    add<T extends SObject>(other: T): this;
     add(other: Partial<this>): this;
+    add(other: any): this;
     add(other: any): this {
         return SObject.add(this, other) as this;
     }
