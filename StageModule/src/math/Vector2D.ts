@@ -8,7 +8,7 @@ class Vector2D extends SObject {
     public x: number;
     public y: number;
 
-    constructor(v1: number = 0, v2: number = 0) {
+    constructor(v1: number = 0, v2: number = v1) {
         super();
         this.x = v1;
         this.y = v2;
@@ -119,9 +119,10 @@ class Vector2D extends SObject {
         return this;
     }
     
-    set(other: Vectorizable): this
-    set(other: any): this {
-        return this.copy(Vector2D.of(other));
+    set(val1: Vectorizable): this;
+    set(val1: number, val2: number): this;
+    set(val1: any, val2?: number): this {
+        return this.copy(Vector2D.of(val1, val2));
     }
 
     normalize(): this {
@@ -201,17 +202,16 @@ class Vector2D extends SObject {
     }
 
     static of<T extends Vector2D>(val1: Vectorizable): T;
-    static of<T extends Vector2D>(val1: number, val2: number): T;
-    static of(val1: any, val2: any = 0, ..._args: any[]): any {
+    static of<T extends Vector2D>(val1: number, val2?: number): T;
+    static of(val1: any, val2: number = val1): any {
         if (val1 instanceof Vector2D) return val1;
         if (typeof val1 === "number") {
             return new Vector2D(val1, val2);
         } else if (typeof val1 === "string") {
-            const text = val1.split(",");
-            const coord = [Number(text[0]), text[1] ? Number(text[1]) : 0];
-            return new Vector2D(coord[0], coord[1]);
+            const coord = val1.split(",").map(str => Number(str));
+            return new Vector2D(coord[0], coord[1] ?? coord[0]);
         } else if (val1 instanceof Array) {
-            return new Vector2D(val1[0] ?? 0, val1[1] ?? 0);
+            return new Vector2D(val1[0] ?? 0, val1[1] ?? val1[0] ?? 0);
         } else if (typeof val1 === "object") {
             return new Vector2D().copy(val1);
         }
@@ -350,9 +350,10 @@ class Rect2D extends Vector2D {
         return this;
     }
 
-    set(other: Rectizable): this;
-    set(other: any): this {
-        return this.copy(Rect2D.of(other));
+    set(val1: Rectizable): this;
+    set(val1: number, val2?: number, val3?: number, val4?: number): this;
+    set(val1: any, val2: number = 0, val3: number = 0, val4: number = 0): this {
+        return this.copy(Rect2D.of(val1, val2, val3, val4));
     }
 
     add(other: Rectizable): this;
@@ -398,7 +399,7 @@ class Rect2D extends Vector2D {
 
     static of(val1: Rectizable): Rect2D;
     static of(val1: number, val2?: number, val3?: number, val4?: number): Rect2D;
-    static of(val1: any, val2: any = 0, val3: any = 0, val4: any = 0,..._args: any[]): any {
+    static of(val1: any, val2: number = 0, val3: number = 0, val4: number = 0): any {
         if (val1 instanceof Rect2D) return val1;
         if (typeof val1 == "number") {
             return new Rect2D(val1, val2, val3, val4);

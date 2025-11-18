@@ -102,7 +102,7 @@ export default class Rotation2D extends SObject {
 
 
     static of<T>(val: Rotationizable): Rotation2D;
-    static of(val: any, ..._args: any[]): Rotation2D {
+    static of(val: any): Rotation2D {
         if (val instanceof Rotation2D) return val;
         if (isTypeIn(val, ["number", "string"])) {
             return new Rotation2D(Number(val));

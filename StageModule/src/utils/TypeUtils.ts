@@ -208,14 +208,12 @@ declare global {
     type AttemptCallBack = <T extends object>(value: any, target: T, key: keyof T) => any;
 
     type Assertion<T> = (target: T) => boolean
-    type ClipFunction = (value: number, ...argArray: any[]) => number;
+    type ClipFunction = (value: number) => number;
 
     // type ColorText = keyof typeof COLORS;
-    type ColorTuple = [number, number, number, number];
+    type ColorTuple = readonly [number, number, number, number];
 
     type DataAssignType = "identical"|"clone"|"uninit";
-
-    // type Colorizable = Color | string | number | Array<number>;
     // type Graphizable = string | Graphics2D | Polygon;
     // type Numerizable = number | string;
     // type Transfizable = string | ContextTransfProperties | ContextTransf | Object2D;
