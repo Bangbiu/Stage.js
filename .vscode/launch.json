@@ -1,0 +1,29 @@
+{
+    "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "Start Dev",
+            "configurations": ["Watch:lib", "Watch:app", "Live Server"]
+        }
+    ],
+    "configurations": [
+        {
+            "command": "npm run watch:lib",
+            "name": "Watch:lib",
+            "request": "launch",
+            "type": "node-terminal"
+        },
+        {
+            "command": "npm run watch:app",
+            "name": "Watch:app",
+            "request": "launch",
+            "type": "node-terminal"
+        },
+        {
+            "command": "npm run live-serve",
+            "name": "Live Server",
+            "request": "launch",
+            "type": "node-terminal"
+        }
+    ]
+}
