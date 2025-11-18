@@ -1,4 +1,4 @@
-import COLORS from '../config/Colors.json' with { type: 'json' }
+import COLORS from '../data/Colors.json' with { type: 'json' }
 import { SObject } from "../utils/SObject.js";
 import { clamp, range } from "../math/SMath.js";
 

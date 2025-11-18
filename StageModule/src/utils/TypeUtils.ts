@@ -177,6 +177,11 @@ declare global {
         copy(other: Partial<this>): this;
     }
 
+    interface Renderable {
+        update(...params: any[]): this;
+        render(ctx: CanvasRenderingContext2D): this
+    }
+
     interface Attributive<
         TObject extends Record<PropertyKey, any>,
         TKey extends keyof TObject = keyof TObject
@@ -214,7 +219,7 @@ declare global {
     type ColorTuple = readonly [number, number, number, number];
 
     type DataAssignType = "identical"|"clone"|"uninit";
-    // type Graphizable = string | Graphics2D | Polygon;
+
     // type Numerizable = number | string;
     // type Transfizable = string | ContextTransfProperties | ContextTransf | Object2D;
 

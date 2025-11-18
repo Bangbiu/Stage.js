@@ -111,6 +111,49 @@ function vec2Angle(u: Tuple<number, 2>, v: Tuple<number, 2>) {
     return sign * Math.acos(vec2Dot(u, v) / (vec2Mag(u) * vec2Mag(v)));
 }
 
+
+// Course
+function cubicExtrema(p0: number, p1: number, p2: number, p3: number): number[] {
+    // derivative is 3*(−p0 + 3p1 − 3p2 + p3)*t^2 + 6*(p0 − 2p1 + p2)*t + 3*(p1 − p0)
+    const a = -p0 + 3*p1 - 3*p2 + p3;
+    const b = 2*(p0 - 2*p1 + p2);
+    const c = p1 - p0;
+
+    const ts: number[] = [];
+
+    const disc = b*b - 4*a*c;
+    if (Math.abs(a) < 1e-6) {
+        if (Math.abs(b) > 1e-6) {
+            const t = -c / b;
+            if (t > 0 && t < 1) ts.push(t);
+        }
+    } else if (disc >= 0) {
+        const d = Math.sqrt(disc);
+        const t1 = (-b + d) / (2*a);
+        const t2 = (-b - d) / (2*a);
+        if (t1 > 0 && t1 < 1) ts.push(t1);
+        if (t2 > 0 && t2 < 1) ts.push(t2);
+    }
+    return ts;
+}
+
+function quadraticExtrema(p0: number, p1: number, p2: number): number[] {
+    const t = (p0 - p1) / (p0 - 2*p1 + p2);
+    return (t > 0 && t < 1) ? [t] : [];
+}
+
+function cubicAt(p0: number, p1: number, p2: number, p3: number, t: number) {
+    const mt = 1 - t;
+    return mt*mt*mt*p0 + 3*mt*mt*t*p1 + 3*mt*t*t*p2 + t*t*t*p3;
+}
+
+function quadraticAt(p0: number, p1: number, p2: number, t: number) {
+    const mt = 1 - t;
+    return mt*mt*p0 + 2*mt*t*p1 + t*t*p2;
+}
+
+
+
 export {
     randomInt,
     range,
@@ -128,5 +171,11 @@ export {
     mat2DotVec2,
     vec2Scale,
     vec2Add,
-    vec2Angle
+    vec2Angle,
+
+    // Course
+    cubicExtrema,
+    quadraticExtrema,
+    cubicAt,
+    quadraticAt
 }
