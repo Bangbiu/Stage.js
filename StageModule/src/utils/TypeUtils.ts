@@ -168,28 +168,6 @@ declare global {
     type ClassType<T> = Function & { prototype: T };
     type Constructor<T> = new (...args: any[]) => T;
 
-    interface ValueWrapper<T> {
-        value: Widen<T>;
-    }
-
-    interface Reproducable {
-        clone(): Reproducable;
-        copy(other: Partial<this>): this;
-    }
-
-    interface Renderable {
-        update(...params: any[]): this;
-        render(ctx: CanvasRenderingContext2D): this
-    }
-
-    interface Attributive<
-        TObject extends Record<PropertyKey, any>,
-        TKey extends keyof TObject = keyof TObject
-    > {
-        readonly owner: TObject;
-        readonly key: TKey;
-    }
-
     // Enum
     type PassiveEventType = "tick" | "resize";
     type MouseEventType =  "mousedown"|"mouseup"|"mousemove"|"mouseenter"|"mouseleave"|"wheel";
@@ -220,13 +198,13 @@ declare global {
 
     type DataAssignType = "identical"|"clone"|"uninit";
 
-    // type Numerizable = number | string;
+    type Numerizable = number | string;
     // type Transfizable = string | ContextTransfProperties | ContextTransf | Object2D;
 
     // type ResizeCallBack<T> = (this: T, parent: Vector2D, ev: UIEvent) => any;
 
-    // type TickEvent<T> = TickCallBack<T> & TickEventProperties;
-    // type TickCallBack<T> = (this: T, ev: TickEvent<T>) => any;
+    type TickEvent<T> = TickCallBack<T> & TickEventProperties;
+    type TickCallBack<T> = (this: T, ev: TickEvent<T>) => any;
 
     // type MouseEventInfo = MouseEvent | WheelEvent;
     // type MouseCallBack<T extends StageInteractive> = (this: T, ev: ContextMouseEvent) => any;
@@ -234,6 +212,37 @@ declare global {
     // type KBCallBack<T extends StageInteractive> = (this: T, ev: KeyboardEvent) => any;
 
     type Polygon = [number, number][];
+
+
+    interface ValueWrapper<T> {
+        value: Widen<T>;
+    }
+
+    interface Reproducable {
+        clone(): Reproducable;
+        copy(other: Partial<this>): this;
+    }
+
+    interface Renderable {
+        update(...params: any[]): this;
+        render(ctx: CanvasRenderingContext2D): this
+    }
+
+    interface TickEventProperties {
+        eventName?: string;
+        repeat?: number;
+        interval?: number;
+        prog?: number;
+        enable?: boolean;
+    }
+
+    interface Attributive<
+        TObject extends Record<PropertyKey, any>,
+        TKey extends keyof TObject = keyof TObject
+    > {
+        readonly owner: TObject;
+        readonly key: TKey;
+    }
 }
 
 export type {

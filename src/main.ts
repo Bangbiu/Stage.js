@@ -55,12 +55,8 @@ draw();
 
 
 Stage.Tester.runAll();
-const so = Stage.SObject.of({
-    a: 3,
-    b: 4
-})
 
+const g = Stage.Graphics2D.of(Stage.PATHS.apple);
+g.msg();
 
-for (const item of so) {
-    console.log(item.attr.toString());
-}
+g.render(ctx);
