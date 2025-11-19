@@ -199,7 +199,6 @@ declare global {
     type DataAssignType = "identical"|"clone"|"uninit";
 
     type Numerizable = number | string;
-    // type Transfizable = string | ContextTransfProperties | ContextTransf | Object2D;
 
     // type ResizeCallBack<T> = (this: T, parent: Vector2D, ev: UIEvent) => any;
 

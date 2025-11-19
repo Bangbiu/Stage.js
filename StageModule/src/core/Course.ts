@@ -42,8 +42,8 @@ interface PathCommand {
 export default class Course extends Array<PathCommand> implements Reproducable {
     private dirtyPath: boolean;
     private dirtyBound: boolean;
-    #path?: Path2D;
-    #bound?: Rect2D;
+    private _path?: Path2D;
+    private _bound?: Rect2D;
 
     constructor() {
         super();
@@ -52,19 +52,19 @@ export default class Course extends Array<PathCommand> implements Reproducable {
     }
 
     get path(): Path2D {
-        if (!this.#path || this.dirtyPath) {
-            this.#path = this.getPath();
+        if (!this._path || this.dirtyPath) {
+            this._path = this.getPath();
             this.dirtyPath = false;
         }
-        return this.#path;
+        return this._path;
     }
 
     get bound(): Rect2D {
-        if (!this.#bound || this.dirtyBound) {
-            this.#bound = this.getBounds();
+        if (!this._bound || this.dirtyBound) {
+            this._bound = this.getBounds();
             this.dirtyBound = false;
         }
-        return this.#bound;
+        return this._bound;
     }
 
     setDirty(dirty: boolean = true): this {
@@ -74,8 +74,8 @@ export default class Course extends Array<PathCommand> implements Reproducable {
     }
 
     compute(): this {
-        this.#path = this.getPath();
-        this.#bound = this.getBounds();
+        this._path = this.getPath();
+        this._bound = this.getBounds();
         return this;
     }
 

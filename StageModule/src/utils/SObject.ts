@@ -135,8 +135,12 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return SObject.updateValues(this, values, assign);
     }
 
-    insertValues( values: object = {}, assign: DataAssignType =ASN_DEF ): this {
+    insertValues( values: object = {}, assign: DataAssignType = ASN_DEF ): this {
         return SObject.insertValues(this, values, assign);
+    }
+
+    initialize(values: Partial<this>, def: Partial<this>, assign: DataAssignType = ASN_DEF): this {
+        return SObject.initialize(this, values, def, assign);
     }
 
     //tryGet(path: KeyPath<this>, success: AttemptCallBack, fail: AttemptCallBack): this;
@@ -628,9 +632,13 @@ class SObject implements Reproducable, ValueWrapper<any> {
         return;
     }
 
-    static initialize<T extends object>(target: T, values: Partial<T>, def: LoosePartialObject<T>, assign: DataAssignType = ASN_DEF): T {
-        SObject.setValues(target, def, ASN_DEF);
-        SObject.updateValues(target, values, assign);
+    static initialize<T extends object>(target: T, values: Partial<T>, def: Partial<T>, assign: DataAssignType = ASN_DEF): T {
+        for (const key in def) {
+            if (key in values) 
+                SObject.assign(target, key, (values as any)[key], assign);
+            else
+                SObject.assign(target, key, (def as any)[key], assign);
+        }
         return target;
     }
 
